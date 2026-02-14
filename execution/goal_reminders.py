@@ -48,25 +48,57 @@ def get_credentials():
     """Get or refresh Google API credentials."""
     creds = None
     
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
+    # 1. Try reading from environment variable (JSON string)
+    token_json = os.getenv('GOOGLE_TOKEN_JSON')
+    if token_json:
+        try:
+            print("🔑 Attempting to load credentials from GOOGLE_TOKEN_JSON...")
+            creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+            print("✅ Successfully loaded credentials from GOOGLE_TOKEN_JSON.")
+        except Exception as e:
+            print(f"❌ Error loading GOOGLE_TOKEN_JSON: {e}")
+
+    # 2. Try Base64 encoded pickle (deprecated fallback)
+    if not creds:
+        token_b64 = os.getenv('GOOGLE_TOKEN_BASE64')
+        if token_b64:
+            try:
+                print("🔑 Attempting to load credentials from GOOGLE_TOKEN_BASE64...")
+                creds_data = base64.b64decode(token_b64)
+                creds = pickle.loads(creds_data)
+                print("✅ Successfully loaded credentials from GOOGLE_TOKEN_BASE64.")
+            except Exception as e:
+                print(f"❌ Error decoding GOOGLE_TOKEN_BASE64: {e}")
+
+    # 3. Fallback to local file
+    if not creds:
+        if os.path.exists('token.pickle'):
+            with open('token.pickle', 'rb') as token:
+                creds = pickle.load(token)
     
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            if not os.path.exists('credentials.json'):
-                print("Error: credentials.json not found!")
+            if not os.path.exists('credentials.json') and not token_b64:
+                print("Error: credentials.json not found and GOOGLE_TOKEN_BASE64 not set!")
                 print("Please run setup first. See GOOGLE_SETUP.md")
                 sys.exit(1)
             
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
+            # Local flow as last resort
+            if os.path.exists('credentials.json'):
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    'credentials.json', SCOPES)
+                creds = flow.run_local_server(port=0)
+            else:
+                return None
         
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
+        # Save to file locally if possible
+        try:
+            with open('token.pickle', 'wb') as token:
+                pickle.dump(creds, token)
+        except:
+            pass
     
     return creds
 

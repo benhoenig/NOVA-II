@@ -1,12 +1,18 @@
 import os
 import pickle
+import json
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from datetime import datetime
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'openid'
+]
 DEFAULT_SHEET_ID = '194ZhTkYYog4qHGALr0qSYuX4iXvuypELRKoVz_--3DA'
 
 import base64
@@ -15,18 +21,29 @@ def get_credentials():
     """Get or refresh Google API credentials."""
     creds = None
     
-    # 1. Try reading from environment variable (Base64 encoded token.pickle)
-    token_b64 = os.getenv('GOOGLE_TOKEN_BASE64')
-    if token_b64:
+    # 1. Try reading from environment variable (JSON string)
+    token_json = os.getenv('GOOGLE_TOKEN_JSON')
+    if token_json:
         try:
-            print("🔑 Attempting to load credentials from GOOGLE_TOKEN_BASE64...")
-            creds_data = base64.b64decode(token_b64)
-            creds = pickle.loads(creds_data)
-            print("✅ Successfully loaded credentials from environment variable.")
+            print("🔑 Attempting to load credentials from GOOGLE_TOKEN_JSON...")
+            creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+            print("✅ Successfully loaded credentials from GOOGLE_TOKEN_JSON.")
         except Exception as e:
-            print(f"❌ Error decoding GOOGLE_TOKEN_BASE64: {e}")
+            print(f"❌ Error loading GOOGLE_TOKEN_JSON: {e}")
 
-    # 2. Fallback to local file
+    # 2. Try Base64 encoded pickle (deprecated fallback)
+    if not creds:
+        token_b64 = os.getenv('GOOGLE_TOKEN_BASE64')
+        if token_b64:
+            try:
+                print("🔑 Attempting to load credentials from GOOGLE_TOKEN_BASE64...")
+                creds_data = base64.b64decode(token_b64)
+                creds = pickle.loads(creds_data)
+                print("✅ Successfully loaded credentials from GOOGLE_TOKEN_BASE64.")
+            except Exception as e:
+                print(f"❌ Error decoding GOOGLE_TOKEN_BASE64: {e}")
+
+    # 3. Fallback to local file
     if not creds:
         token_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'token.pickle')
         print(f"📁 Checking for local token at: {token_path}")
