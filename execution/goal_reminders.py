@@ -22,7 +22,9 @@ import argparse
 import json
 import re
 import pickle
+import base64
 from datetime import datetime, timedelta
+from email.mime.text import MIMEText
 
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
@@ -31,60 +33,16 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# LINE Imports
-from linebot import LineBotApi
-from linebot.models import TextSendMessage
-from linebot.exceptions import LineBotApiError
-
 # Load environment variables
 load_dotenv()
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+# SCOPES: Add Gmail Send scope
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/gmail.send'
+]
 DEFAULT_SHEET_ID = '194ZhTkYYog4qHGALr0qSYuX4iXvuypELRKoVz_--3DA'
-
-# LINE Config
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
-USER_ID_FILE = 'user_ids.json'  # Shared file with app.py
-
-def get_user_ids():
-    """Retrieve saved user IDs."""
-    user_ids = []
-    # Look for file in current dir or project root
-    paths = [USER_ID_FILE, os.path.join(os.path.dirname(__file__), '..', USER_ID_FILE)]
-    
-    for path in paths:
-        if os.path.exists(path):
-            try:
-                with open(path, 'r') as f:
-                    user_ids = json.load(f)
-                break
-            except:
-                pass
-    return user_ids
-
-def send_line_push(message):
-    """Send push message to all users."""
-    if not LINE_CHANNEL_ACCESS_TOKEN:
-        print("⚠️  LINE_CHANNEL_ACCESS_TOKEN not set. Skipping push.")
-        return
-
-    try:
-        line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-        user_ids = get_user_ids()
-        
-        if not user_ids:
-            print("⚠️  No User IDs found. Skipping push.")
-            return
-
-        print(f"📨 Sending LINE push to {len(user_ids)} users...")
-        
-        for user_id in user_ids:
-            try:
-                line_bot_api.push_message(user_id, TextSendMessage(text=message))
-            except LineBotApiError as e:
-                print(f"❌ Failed to send to {user_id}: {e}")
-    except Exception as e:
-        print(f"❌ Error initializing LINE Bot API: {e}")
+USER_ID_FILE = 'user_ids.json'
 
 def get_credentials():
     """Get or refresh Google API credentials."""
@@ -111,6 +69,23 @@ def get_credentials():
             pickle.dump(creds, token)
     
     return creds
+
+def send_email_via_api(service, to_email, subject, message_text):
+    """Send email using Gmail API."""
+    try:
+        message = MIMEText(message_text)
+        message['to'] = to_email
+        message['subject'] = subject
+        
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+        body = {'raw': raw_message}
+        
+        message = service.users().messages().send(userId='me', body=body).execute()
+        print(f"📧 Email sent to {to_email} (Msg ID: {message['id']})")
+        return message
+    except HttpError as error:
+        print(f"❌ An error occurred sending email: {error}")
+        return None
 
 def parse_reminder_schedule(schedule_str):
     """
@@ -186,25 +161,20 @@ def should_remind(last_reminded_str, reminder_schedule):
 def check_reminders(update_timestamps=False):
     """
     Check all active goals and generate reminders.
-    
-    Args:
-        update_timestamps: If True, update Last Reminded field
-        
-    Returns:
-        List of goals that need reminders
     """
     print("⏰ Checking goal reminders...\n")
     
-    # Get credentials and create service
+    # Get credentials (covers both Sheets and Gmail)
     creds = get_credentials()
-    service = build('sheets', 'v4', credentials=creds)
+    sheets_service = build('sheets', 'v4', credentials=creds)
+    gmail_service = build('gmail', 'v1', credentials=creds)
     
     # Get Sheet ID
     sheet_id = os.getenv('GOOGLE_SHEET_ID', DEFAULT_SHEET_ID)
     
     # Get all goals
     try:
-        result = service.spreadsheets().values().get(
+        result = sheets_service.spreadsheets().values().get(
             spreadsheetId=sheet_id,
             range="Goals!A:M"
         ).execute()
@@ -285,7 +255,7 @@ def check_reminders(update_timestamps=False):
                     'data': updates
                 }
                 
-                service.spreadsheets().values().batchUpdate(
+                sheets_service.spreadsheets().values().batchUpdate(
                     spreadsheetId=sheet_id,
                     body=body
                 ).execute()
@@ -301,54 +271,64 @@ def check_reminders(update_timestamps=False):
         
         print(f"🔔 {len(reminders)} Reminder(s):\n")
         
-        # Construct LINE Message for Push
-        line_msg = f"🔔 NOVA II Reminders ({len(reminders)})\n"
-        
-        print("="*60)
+        # Construct Email Message
+        email_body = f"🔔 NOVA II Reminders ({len(reminders)})\n"
+        email_body += "="*60 + "\n"
         
         for i, reminder in enumerate(reminders, 1):
             print(f"\n📌 Reminder #{i}")
             print(f"{'='*60}")
             print(f"Goal: {reminder['name']}")
-            print(f"ID: {reminder['goal_id']}")
             
-            # Add to line msg
-            line_msg += f"\n📌 {reminder['name']}"
+            # Add to email msg
+            email_body += f"\n📌 {reminder['name']}\n"
             
             if reminder['description']:
                 print(f"Description: {reminder['description']}")
-            
-            if reminder['type']:
-                print(f"Type: {reminder['type']}")
+                email_body += f"   Description: {reminder['description']}\n"
             
             if reminder['due_date']:
                 print(f"Due: {reminder['due_date']}", end='')
+                email_body += f"   Due: {reminder['due_date']}"
                 if reminder['days_left'] is not None:
                     if reminder['days_left'] >= 0:
                         print(f" ({reminder['days_left']} day(s) remaining)")
-                        # Line msg
-                        line_msg += f" ({reminder['days_left']}d left)"
+                        email_body += f" ({reminder['days_left']}d left)\n"
                     else:
                         print(f" (⚠️  OVERDUE by {abs(reminder['days_left'])} days)")
-                        # Line msg
-                        line_msg += f" (⚠️ Overdue {abs(reminder['days_left'])}d)"
+                        email_body += f" (⚠️ OVERDUE {abs(reminder['days_left'])}d)\n"
                 else:
                     print()
+                    email_body += "\n"
             
             print(f"Priority: {reminder['priority']}")
-            print(f"Schedule: {reminder['reminder_schedule']}")
-            
             # Show latest progress note if any
             if reminder['progress_notes']:
                 notes_lines = reminder['progress_notes'].split('\n')
                 latest_note = notes_lines[-1] if notes_lines else ''
                 if latest_note:
                     print(f"Latest: {latest_note}")
+                    email_body += f"   Latest Note: {latest_note}\n"
             
             print(f"{'='*60}")
+            email_body += "-"*30 + "\n"
 
-        # Send Push Notification
-        send_line_push(line_msg)
+        # Send Email via Gmail API
+        try:
+            user_email = os.getenv('GMAIL_USER')
+            
+            if user_email:
+                send_email_via_api(
+                    gmail_service, 
+                    user_email, 
+                    f"NOVA II Daily Briefing - {datetime.now().strftime('%Y-%m-%d')}",
+                    email_body
+                )
+            else:
+                print("⚠️  GMAIL_USER not set in .env. Skipping email.")
+                
+        except Exception as e:
+             print(f"❌ Error sending email: {e}")
 
         return reminders
         
