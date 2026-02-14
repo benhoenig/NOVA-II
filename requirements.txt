@@ -1,0 +1,26 @@
+# Core dependencies for the 3-layer architecture
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Google API integration (for Sheets, Slides deliverables)
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.1
+google-auth-oauthlib>=1.1.0
+
+# Data processing
+pandas>=2.0.0
+
+# Web scraping (if needed)
+beautifulsoup4>=4.12.0
+selenium>=4.15.0
+
+# LLM Integration
+openai>=1.0.0
+anthropic>=0.3.0
+
+# Web Server / LINE Bot
+flask>=3.0.0
+line-bot-sdk>=3.0.0
+gunicorn>=21.2.0
+
+# Add other dependencies as needed
