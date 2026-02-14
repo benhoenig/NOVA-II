@@ -140,28 +140,49 @@ def process_command(message, user_id):
             if not name:
                 return "I need a name for the goal."
             
-            # Call creation logic (simplified for sync response)
-            # In production, this should be async or offloaded
-            # For now, we trick it by calling the logic directly
+            # Use goal_create logic
+            result = create_goal(name, description=desc, due_date=due, auto_breakdown=True)
             
-            # Using LLM for breakdown since we are in "Smart Mode"
-            tasks = generate_breakdown(name, desc, due)
-            
-            # We can't easily capture stdout from create_goal, so we might need to modify it
-            # Or just return a confirmation for now
-            
-            # TODO: Ideally call create_goal() properly
-            return f"✅ Creating goal: '{name}'\nDue: {due}\n\nI'm also generating an actionable plan with {len(tasks)} tasks."
+            if result.get('success'):
+                return f"✅ เป้าหมาย '{name}' ถูกสร้างแล้ว!\n\n📅 กำหนดส่ง: {due or 'ไม่ระบุ'}\n📝 ผมได้สร้าง Action Plan เบื้องต้นให้แล้วครับ"
+            else:
+                return f"❌ เกิดข้อผิดพลาดในการสร้างเป้าหมาย: {result.get('error')}"
             
         elif intent == 'VIEW_GOALS':
-             # TODO: Implement reading from sheets
-             return "🔍 Checking your active goals... (Feature coming soon!)"
+            from execution.goal_utils import get_active_goals
+            goals = get_active_goals()
+            
+            if not goals:
+                return "🔍 ไม่พบเป้าหมายที่กำลังดำเนินการอยู่ในขณะนี้ครับ"
+            
+            reply = f"รายการเป้าหมายของคุณ ({len(goals)}):\n"
+            for g in goals:
+                reply += f"\n📌 {g['name']}"
+                if g['due_date']:
+                    reply += f" (Due: {g['due_date']})"
+                if g['priority']:
+                    reply += f" [{g['priority']}]"
+            
+            return reply
              
         elif intent == 'DAILY_BRIEF':
-             return "📅 checking your schedule... (Feature coming soon!)"
+            from execution.goal_utils import get_daily_tasks
+            goals = get_daily_tasks()
+            
+            if not goals:
+                return "📅 วันนี้ไม่มีภารกิจเร่งด่วนครับ พักผ่อนได้เต็มที่!"
+            
+            reply = "📅 สรุปภารกิจสำหรับวันนี้:\n"
+            for g in goals:
+                reply += f"\n🎯 {g['name']}"
+                if g['due_date']:
+                    reply += f" - กำหนดส่ง {g['due_date']}"
+            
+            reply += "\n\nสู้ๆ ครับ! มีอะไรให้ผมช่วยอีกไหม?"
+            return reply
              
         elif intent == 'CHAT':
-            return params.get('response', "I heard you!")
+            return params.get('response', "รับทราบครับ!")
             
         else:
             return "Unknown intent."
