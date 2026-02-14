@@ -9,51 +9,87 @@ from datetime import datetime
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 DEFAULT_SHEET_ID = '194ZhTkYYog4qHGALr0qSYuX4iXvuypELRKoVz_--3DA'
 
+import base64
+
 def get_credentials():
     """Get or refresh Google API credentials."""
     creds = None
-    # Look for token.pickle in project root
-    token_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'token.pickle')
     
-    if os.path.exists(token_path):
-        with open(token_path, 'rb') as token:
-            creds = pickle.load(token)
+    # 1. Try reading from environment variable (Base64 encoded token.pickle)
+    token_b64 = os.getenv('GOOGLE_TOKEN_BASE64')
+    if token_b64:
+        try:
+            print("🔑 Attempting to load credentials from GOOGLE_TOKEN_BASE64...")
+            creds_data = base64.b64decode(token_b64)
+            creds = pickle.loads(creds_data)
+            print("✅ Successfully loaded credentials from environment variable.")
+        except Exception as e:
+            print(f"❌ Error decoding GOOGLE_TOKEN_BASE64: {e}")
+
+    # 2. Fallback to local file
+    if not creds:
+        token_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'token.pickle')
+        print(f"📁 Checking for local token at: {token_path}")
+        if os.path.exists(token_path):
+            try:
+                with open(token_path, 'rb') as token:
+                    creds = pickle.load(token)
+                print("✅ Successfully loaded credentials from local file.")
+            except Exception as e:
+                print(f"❌ Error loading local token: {e}")
     
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+    if not creds:
+        print("⚠️ No credentials found (env or file)!")
+        return None
+
+    if not creds.valid:
+        if creds.expired and creds.refresh_token:
+            print("🔄 Token expired, attempting refresh...")
+            try:
+                creds.refresh(Request())
+                print("✅ Token refreshed successfully.")
+            except Exception as e:
+                print(f"❌ Error refreshing token: {e}")
+                return None
         else:
-            # Note: In a deployed env, we expect token.pickle to exist
+            print("⚠️ Credentials invalid and cannot be refreshed.")
             return None
             
     return creds
 
 def get_active_goals():
     """Fetch active goals from Google Sheets."""
+    print("📋 Starting get_active_goals()...")
     creds = get_credentials()
     if not creds:
+        print("❌ get_active_goals: Could not get credentials.")
         return []
         
-    service = build('sheets', 'v4', credentials=creds)
-    sheet_id = os.getenv('GOOGLE_SHEET_ID', DEFAULT_SHEET_ID)
-    
     try:
+        service = build('sheets', 'v4', credentials=creds)
+        sheet_id = os.getenv('GOOGLE_SHEET_ID', DEFAULT_SHEET_ID)
+        print(f"📊 Fetching from Sheet ID: {sheet_id}")
+        
         result = service.spreadsheets().values().get(
             spreadsheetId=sheet_id,
             range="Goals!A:K"
         ).execute()
         
         values = result.get('values', [])
+        print(f"📑 Total rows found: {len(values)}")
+        
         if len(values) <= 1:
+            print("ℹ️ No goal data found beyond header.")
             return []
             
-        headers = values[0]
         active_goals = []
-        
-        for row in values[1:]:
-            if len(row) < 7: continue
+        for i, row in enumerate(values[1:], start=2):
+            if len(row) < 7:
+                continue
             
-            status = row[6]
+            status = row[6].strip()
+            print(f"🔍 Row {i}: Name='{row[1]}' Status='{status}'")
+            
             if status == 'Active':
                 goal = {
                     'id': row[0],
@@ -65,9 +101,10 @@ def get_active_goals():
                 }
                 active_goals.append(goal)
                 
+        print(f"✅ Found {len(active_goals)} active goals.")
         return active_goals
     except Exception as e:
-        print(f"Error fetching goals: {e}")
+        print(f"❌ Error in get_active_goals: {e}")
         return []
 
 def get_daily_tasks():
