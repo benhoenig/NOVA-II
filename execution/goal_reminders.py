@@ -19,21 +19,72 @@ Examples:
 import os
 import sys
 import argparse
+import json
+import re
+import pickle
 from datetime import datetime, timedelta
+
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import pickle
-import re
+
+# LINE Imports
+from linebot import LineBotApi
+from linebot.models import TextSendMessage
+from linebot.exceptions import LineBotApiError
 
 # Load environment variables
 load_dotenv()
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 DEFAULT_SHEET_ID = '194ZhTkYYog4qHGALr0qSYuX4iXvuypELRKoVz_--3DA'
+
+# LINE Config
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
+USER_ID_FILE = 'user_ids.json'  # Shared file with app.py
+
+def get_user_ids():
+    """Retrieve saved user IDs."""
+    user_ids = []
+    # Look for file in current dir or project root
+    paths = [USER_ID_FILE, os.path.join(os.path.dirname(__file__), '..', USER_ID_FILE)]
+    
+    for path in paths:
+        if os.path.exists(path):
+            try:
+                with open(path, 'r') as f:
+                    user_ids = json.load(f)
+                break
+            except:
+                pass
+    return user_ids
+
+def send_line_push(message):
+    """Send push message to all users."""
+    if not LINE_CHANNEL_ACCESS_TOKEN:
+        print("⚠️  LINE_CHANNEL_ACCESS_TOKEN not set. Skipping push.")
+        return
+
+    try:
+        line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+        user_ids = get_user_ids()
+        
+        if not user_ids:
+            print("⚠️  No User IDs found. Skipping push.")
+            return
+
+        print(f"📨 Sending LINE push to {len(user_ids)} users...")
+        
+        for user_id in user_ids:
+            try:
+                line_bot_api.push_message(user_id, TextSendMessage(text=message))
+            except LineBotApiError as e:
+                print(f"❌ Failed to send to {user_id}: {e}")
+    except Exception as e:
+        print(f"❌ Error initializing LINE Bot API: {e}")
 
 def get_credentials():
     """Get or refresh Google API credentials."""
@@ -249,6 +300,10 @@ def check_reminders(update_timestamps=False):
             return []
         
         print(f"🔔 {len(reminders)} Reminder(s):\n")
+        
+        # Construct LINE Message for Push
+        line_msg = f"🔔 NOVA II Reminders ({len(reminders)})\n"
+        
         print("="*60)
         
         for i, reminder in enumerate(reminders, 1):
@@ -256,6 +311,9 @@ def check_reminders(update_timestamps=False):
             print(f"{'='*60}")
             print(f"Goal: {reminder['name']}")
             print(f"ID: {reminder['goal_id']}")
+            
+            # Add to line msg
+            line_msg += f"\n📌 {reminder['name']}"
             
             if reminder['description']:
                 print(f"Description: {reminder['description']}")
@@ -268,8 +326,12 @@ def check_reminders(update_timestamps=False):
                 if reminder['days_left'] is not None:
                     if reminder['days_left'] >= 0:
                         print(f" ({reminder['days_left']} day(s) remaining)")
+                        # Line msg
+                        line_msg += f" ({reminder['days_left']}d left)"
                     else:
                         print(f" (⚠️  OVERDUE by {abs(reminder['days_left'])} days)")
+                        # Line msg
+                        line_msg += f" (⚠️ Overdue {abs(reminder['days_left'])}d)"
                 else:
                     print()
             
@@ -284,7 +346,10 @@ def check_reminders(update_timestamps=False):
                     print(f"Latest: {latest_note}")
             
             print(f"{'='*60}")
-        
+
+        # Send Push Notification
+        send_line_push(line_msg)
+
         return reminders
         
     except HttpError as error:
