@@ -159,7 +159,7 @@ def process_command(message, user_id):
         
         Available Intents:
         - CREATE_GOAL: User wants to create a new goal.
-          Params: name, description, due_date (YYYY-MM-DD)
+          Params: name, description, due_date (YYYY-MM-DD), response (a helpful Thai reply to clarify or ask for missing info like name or due date)
           
         - VIEW_GOALS: User wants to see their goals.
           Params: none
@@ -214,9 +214,10 @@ def process_command(message, user_id):
             name = params.get('name')
             desc = params.get('description', '')
             due = params.get('due_date')
+            llm_response = params.get('response')
             
             if not name:
-                reply_text = "I need a name for the goal."
+                reply_text = llm_response or "ยินดีช่วยตั้งเป้าหมายค่ะ! อยากให้เป้าหมายนี้ชื่อว่าอะไรดีคะ?"
             else:
                 # Use goal_create logic
                 logger.info(f"🎯 Creating goal: {name} (Auto-breakdown: True)")
