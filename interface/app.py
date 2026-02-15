@@ -14,21 +14,11 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Add project root to sys.path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Load environment variables
+load_dotenv()
 
-# Import execution modules
-try:
-    from execution.llm_utils import LLMClient
-    from execution.goal_create import create_goal
-    from execution.supabase_db import (
-        save_chat_message, get_chat_history, delete_goal, 
-        search_knowledge, store_knowledge, delete_task, update_task, get_task_by_name_partial
-    )
-    # Note: Other modules will be imported as needed or added here
-except ImportError as e:
-    print(f"Error importing modules: {e}")
-    LLMClient = None
+# Placeholder for LLMClient (will be imported lazily)
+LLMClient = None
 
 # Initialize Flask App
 app = Flask(__name__)
@@ -93,15 +83,21 @@ def handle_message(event):
 
 def process_command(message, user_id):
     """Process message using LLM to determine intent."""
+    global LLMClient
+    
+    # Lazy Imports
+    from execution.supabase_db import (
+        save_chat_message, get_chat_history, delete_goal, 
+        search_knowledge, store_knowledge, delete_task, update_task, get_task_by_name_partial
+    )
+    from execution.llm_utils import LLMClient as ActualLLMClient
+    from execution.goal_create import create_goal
     
     if message.lower() == 'ping':
         return 'pong! NOVA II is online.'
         
-    if not LLMClient:
-        return "System Error: LLM Client not available."
-
     try:
-        client = LLMClient()
+        client = ActualLLMClient()
         
         # 0. Save User Message immediately for context (Fail-safe)
         try:
