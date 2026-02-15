@@ -1,0 +1,612 @@
+/* ─── NOVA II Dashboard ─── Design System ─── */
+/* Style: Clean white + Indigo (#5B5FC7) accent */
+/* Reference: Dappr-style dashboard */
+
+/* ─── Reset & Base ─── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --bg: #F5F6FA;
+    --card: #FFFFFF;
+    --text-primary: #1A1D2E;
+    --text-secondary: #6B7085;
+    --text-muted: #A0A4B8;
+    --accent: #5B5FC7;
+    --accent-light: #EDEDFA;
+    --accent-hover: #4A4EB5;
+    --green: #22C55E;
+    --green-bg: #ECFDF5;
+    --yellow: #F59E0B;
+    --yellow-bg: #FFFBEB;
+    --red: #EF4444;
+    --red-bg: #FEF2F2;
+    --border: #E8E9F0;
+    --shadow: 0 2px 12px rgba(91, 95, 199, 0.06);
+    --shadow-hover: 0 4px 20px rgba(91, 95, 199, 0.12);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --transition: all 0.2s ease;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding-bottom: 80px;
+}
+
+/* ─── Header ─── */
+.header {
+    padding: 20px 20px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.header h1 span {
+    color: var(--accent);
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.header-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 18px;
+    text-decoration: none;
+}
+
+.header-btn:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+}
+
+/* ─── Stat Cards ─── */
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 16px 20px;
+}
+
+.stat-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px 16px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 2px solid transparent;
+}
+
+.stat-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+}
+
+.stat-card.active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.stat-card .icon {
+    font-size: 22px;
+    margin-bottom: 6px;
+}
+
+.stat-card .number {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.stat-card .label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* ─── Section Headers ─── */
+.section-header {
+    padding: 8px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.section-header .see-all {
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* ─── Goal Cards ─── */
+.goal-list {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.goal-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.goal-card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.goal-card .goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.goal-card .goal-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.urgency-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    margin-left: 8px;
+}
+
+.urgency-badge.normal { background: var(--green-bg); color: var(--green); }
+.urgency-badge.warning { background: var(--yellow-bg); color: var(--yellow); }
+.urgency-badge.urgent { background: var(--red-bg); color: var(--red); }
+.urgency-badge.overdue { background: var(--red); color: white; }
+
+.goal-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.progress-bar {
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #7B7FD7);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.progress-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ─── Task List (inside expandable goal) ─── */
+.task-list {
+    margin-top: 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    display: none;
+}
+
+.goal-card.expanded .task-list {
+    display: block;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+}
+
+.task-item + .task-item {
+    border-top: 1px solid #F3F4F8;
+}
+
+.task-status-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.task-status-icon.done {
+    background: var(--green-bg);
+    color: var(--green);
+}
+
+.task-status-icon.todo {
+    background: var(--bg);
+    color: var(--text-muted);
+    border: 1.5px solid var(--border);
+}
+
+.task-status-icon.in-progress {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.task-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.task-name.done {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.task-due {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.expand-indicator {
+    text-align: center;
+    padding: 6px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.goal-card.expanded .expand-indicator {
+    display: none;
+}
+
+/* ─── KB Cards ─── */
+.kb-controls {
+    padding: 0 20px 8px;
+}
+
+.search-bar {
+    width: 100%;
+    padding: 12px 16px 12px 40px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    background: var(--card);
+    outline: none;
+    transition: var(--transition);
+    color: var(--text-primary);
+}
+
+.search-bar::placeholder {
+    color: var(--text-muted);
+}
+
+.search-bar:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(91, 95, 199, 0.1);
+}
+
+.search-wrapper {
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--text-muted);
+}
+
+.filter-pills {
+    display: flex;
+    gap: 8px;
+    padding: 10px 20px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.filter-pills::-webkit-scrollbar { display: none; }
+
+.pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--card);
+    color: var(--text-secondary);
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+}
+
+.pill.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.pill:hover:not(.active) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.kb-list {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.kb-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.kb-card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.kb-card .kb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+
+.kb-card .kb-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.category-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.category-badge.business { background: #EDE9FE; color: #7C3AED; }
+.category-badge.notes { background: #DBEAFE; color: #2563EB; }
+.category-badge.lessons { background: #FEF3C7; color: #D97706; }
+.category-badge.customers { background: #DCFCE7; color: #16A34A; }
+.category-badge.other { background: #F3F4F6; color: #6B7280; }
+
+.kb-card .kb-content {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.kb-card.expanded .kb-content {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+}
+
+.kb-card .kb-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+/* ─── Bottom Navigation ─── */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 env(safe-area-inset-bottom, 8px);
+    z-index: 100;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    border: none;
+    background: none;
+    font-family: 'Inter', sans-serif;
+}
+
+.nav-item .nav-icon {
+    font-size: 20px;
+    opacity: 0.5;
+    transition: var(--transition);
+}
+
+.nav-item .nav-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.nav-item.active .nav-icon {
+    opacity: 1;
+}
+
+.nav-item.active .nav-label {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ─── Tab Content ─── */
+.tab-content {
+    display: none;
+    padding-bottom: 20px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ─── Loading / Empty States ─── */
+.loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.loading .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state .empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* ─── Settings ─── */
+.settings-list {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-item {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-item .label {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.settings-item .value {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.logout-btn {
+    display: block;
+    margin: 20px;
+    padding: 14px;
+    background: var(--red-bg);
+    color: var(--red);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    font-family: 'Inter', sans-serif;
+    transition: var(--transition);
+}
+
+.logout-btn:hover {
+    background: var(--red);
+    color: white;
+}
+
+/* ─── Animations ─── */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.goal-card, .kb-card, .stat-card {
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.goal-card:nth-child(2) { animation-delay: 0.05s; }
+.goal-card:nth-child(3) { animation-delay: 0.1s; }
+.kb-card:nth-child(2) { animation-delay: 0.05s; }
+.kb-card:nth-child(3) { animation-delay: 0.1s; }

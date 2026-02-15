@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>NOVA II — Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/dashboard/static/dashboard.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>สวัสดีค่ะ <span>เบน</span>! 👋</h1>
+        <div class="header-actions">
+            <button class="header-btn" onclick="refreshData()" title="Refresh">🔄</button>
+            <a class="header-btn" href="/dashboard/logout" title="Logout">🚪</a>
+        </div>
+    </div>
+
+    <!-- ═══ HOME TAB ═══ -->
+    <div id="tab-home" class="tab-content active">
+
+        <!-- Stat Cards -->
+        <div class="stat-cards">
+            <div class="stat-card" onclick="switchTab('goals')">
+                <div class="icon">🎯</div>
+                <div class="number" id="stat-goals">-</div>
+                <div class="label">Active Goals</div>
+            </div>
+            <div class="stat-card" onclick="switchTab('goals')">
+                <div class="icon">✅</div>
+                <div class="number" id="stat-tasks">-</div>
+                <div class="label">Tasks Done</div>
+            </div>
+            <div class="stat-card" onclick="switchTab('kb')">
+                <div class="icon">📝</div>
+                <div class="number" id="stat-kb">-</div>
+                <div class="label">Notes</div>
+            </div>
+        </div>
+
+        <!-- Active Goals Preview -->
+        <div class="section-header">
+            <h2>🎯 Active Goals</h2>
+            <span class="see-all" onclick="switchTab('goals')">See all →</span>
+        </div>
+        <div id="home-goals" class="goal-list">
+            <div class="loading">
+                <div class="spinner"></div>Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ GOALS TAB ═══ -->
+    <div id="tab-goals" class="tab-content">
+        <div class="section-header">
+            <h2>🎯 Goals & Tasks</h2>
+        </div>
+        <div id="goals-list" class="goal-list">
+            <div class="loading">
+                <div class="spinner"></div>Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ KB TAB ═══ -->
+    <div id="tab-kb" class="tab-content">
+        <div class="section-header">
+            <h2>📝 Knowledge Base</h2>
+        </div>
+        <div class="kb-controls">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-bar" placeholder="ค้นหาโน้ต..." id="kb-search"
+                    oninput="debounceSearch()">
+            </div>
+        </div>
+        <div class="filter-pills" id="kb-filters">
+            <button class="pill active" onclick="filterKB('All')">All</button>
+        </div>
+        <div id="kb-list" class="kb-list">
+            <div class="loading">
+                <div class="spinner"></div>Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ SETTINGS TAB ═══ -->
+    <div id="tab-settings" class="tab-content">
+        <div class="section-header">
+            <h2>⚙️ Settings</h2>
+        </div>
+        <div class="settings-list">
+            <div class="settings-item">
+                <span class="label">📊 Total Goals</span>
+                <span class="value" id="set-total-goals">-</span>
+            </div>
+            <div class="settings-item">
+                <span class="label">✅ Tasks Completed</span>
+                <span class="value" id="set-done-tasks">-</span>
+            </div>
+            <div class="settings-item">
+                <span class="label">📝 Knowledge Entries</span>
+                <span class="value" id="set-kb-count">-</span>
+            </div>
+            <div class="settings-item">
+                <span class="label">🕐 Last Updated</span>
+                <span class="value" id="set-last-update">-</span>
+            </div>
+            <div class="settings-item">
+                <span class="label">🤖 System</span>
+                <span class="value">NOVA II v2.0</span>
+            </div>
+        </div>
+        <a href="/dashboard/logout" class="logout-btn">🚪 ออกจากระบบ</a>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('home')">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">Home</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('goals')">
+            <span class="nav-icon">🎯</span>
+            <span class="nav-label">Goals</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('kb')">
+            <span class="nav-icon">📝</span>
+            <span class="nav-label">KB</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('settings')">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Settings</span>
+        </button>
+    </nav>
+
+    <script>
+        // ─── State ───
+        let currentTab = 'home';
+        let goalsData = [];
+        let kbData = [];
+        let currentCategoryFilter = 'All';
+        let searchTimeout = null;
+
+        // ─── Tab Switching ───
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item')[['home', 'goals', 'kb', 'settings'].indexOf(tab)].classList.add('active');
+
+            // Load data on first visit
+            if (tab === 'goals' && !document.getElementById('goals-list').querySelector('.goal-card')) {
+                loadGoals('goals-list', false);
+            }
+            if (tab === 'kb' && !document.getElementById('kb-list').querySelector('.kb-card')) {
+                loadKB();
+            }
+        }
+
+        // ─── API Calls ───
+        async function fetchAPI(endpoint) {
+            try {
+                const res = await fetch(endpoint);
+                if (res.status === 401 || res.status === 302) {
+                    window.location.href = '/dashboard/login';
+                    return null;
+                }
+                return await res.json();
+            } catch (e) {
+                console.error('API Error:', e);
+                return null;
+            }
+        }
+
+        // ─── Load Stats ───
+        async function loadStats() {
+            const data = await fetchAPI('/api/stats');
+            if (!data || !data.success) return;
+
+            const s = data.stats;
+            document.getElementById('stat-goals').textContent = s.active_goals;
+            document.getElementById('stat-tasks').textContent = `${s.done_tasks}/${s.total_tasks}`;
+            document.getElementById('stat-kb').textContent = s.kb_entries;
+
+            // Settings
+            document.getElementById('set-total-goals').textContent = s.total_goals;
+            document.getElementById('set-done-tasks').textContent = `${s.done_tasks}/${s.total_tasks}`;
+            document.getElementById('set-kb-count').textContent = s.kb_entries;
+
+            const now = new Date();
+            document.getElementById('set-last-update').textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ─── Load Goals ───
+        async function loadGoals(containerId, limitToActive = true) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const data = await fetchAPI('/api/goals');
+            if (!data || !data.success) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎯</div><p>ไม่สามารถโหลดข้อมูลได้ค่ะ</p></div>';
+                return;
+            }
+
+            goalsData = data.goals;
+            let goals = goalsData;
+            if (limitToActive) {
+                goals = goals.filter(g => g.status === 'Active');
+            }
+
+            if (goals.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎯</div><p>ยังไม่มี goals ค่ะ<br>เริ่มสร้างผ่าน LINE ได้เลย!</p></div>';
+                return;
+            }
+
+            container.innerHTML = goals.map(goal => renderGoalCard(goal)).join('');
+        }
+
+        function renderGoalCard(goal) {
+            const daysLeft = goal.due_date ? getDaysLeft(goal.due_date) : null;
+            const daysText = daysLeft !== null
+                ? (daysLeft < 0 ? `⏰ เลยกำหนด ${Math.abs(daysLeft)} วัน`
+                    : daysLeft === 0 ? '⏰ ครบกำหนดวันนี้!'
+                        : `⏰ อีก ${daysLeft} วัน`)
+                : '';
+
+            const urgencyClass = goal.urgency || 'normal';
+            const urgencyLabels = { normal: 'On Track', warning: 'Soon', urgent: 'Urgent', overdue: 'Overdue' };
+
+            const tasksHTML = (goal.tasks || []).map(task => {
+                const statusClass = task.status === 'Done' ? 'done' : task.status === 'In Progress' ? 'in-progress' : 'todo';
+                const statusIcon = task.status === 'Done' ? '✓' : task.status === 'In Progress' ? '▶' : '';
+                const nameClass = task.status === 'Done' ? 'done' : '';
+                const dueText = task.due_date ? formatDate(task.due_date) : '';
+
+                return `<div class="task-item">
+                <div class="task-status-icon ${statusClass}">${statusIcon}</div>
+                <span class="task-name ${nameClass}">${escapeHTML(task.name)}</span>
+                ${dueText ? `<span class="task-due">${dueText}</span>` : ''}
+            </div>`;
+            }).join('');
+
+            return `<div class="goal-card" onclick="toggleGoal(this)">
+            <div class="goal-header">
+                <span class="goal-name">${escapeHTML(goal.name)}</span>
+                <span class="urgency-badge ${urgencyClass}">${urgencyLabels[urgencyClass]}</span>
+            </div>
+            <div class="goal-meta">
+                ${goal.due_date ? `<span>📅 ${formatDate(goal.due_date)}</span>` : ''}
+                <span>${daysText}</span>
+                <span>📌 ${goal.status}</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${goal.progress}%"></div>
+            </div>
+            <div class="progress-text">${goal.tasks_done}/${goal.tasks_total} tasks completed · ${goal.progress}%</div>
+            ${goal.tasks && goal.tasks.length > 0 ? `
+                <div class="expand-indicator">▼ ดู tasks (${goal.tasks_total})</div>
+                <div class="task-list">${tasksHTML}</div>
+            ` : ''}
+        </div>`;
+        }
+
+        function toggleGoal(el) {
+            el.classList.toggle('expanded');
+        }
+
+        // ─── Load KB ───
+        async function loadKB() {
+            const container = document.getElementById('kb-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+            const search = document.getElementById('kb-search').value;
+            const params = new URLSearchParams();
+            if (currentCategoryFilter !== 'All') params.set('category', currentCategoryFilter);
+            if (search) params.set('search', search);
+
+            const data = await fetchAPI(`/api/kb?${params}`);
+            if (!data || !data.success) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>ไม่สามารถโหลดข้อมูลได้ค่ะ</p></div>';
+                return;
+            }
+
+            kbData = data.entries;
+
+            // Update filter pills
+            const filterContainer = document.getElementById('kb-filters');
+            const categories = ['All', ...(data.categories || [])];
+            filterContainer.innerHTML = categories.map(cat =>
+                `<button class="pill ${cat === currentCategoryFilter ? 'active' : ''}" onclick="filterKB('${cat}')">${cat}</button>`
+            ).join('');
+
+            if (kbData.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>ไม่พบโน้ตค่ะ</p></div>';
+                return;
+            }
+
+            container.innerHTML = kbData.map(entry => renderKBCard(entry)).join('');
+        }
+
+        function renderKBCard(entry) {
+            const catClass = (entry.category || 'other').toLowerCase();
+            return `<div class="kb-card" onclick="this.classList.toggle('expanded')">
+            <div class="kb-header">
+                <span class="kb-title">${escapeHTML(entry.title)}</span>
+                <span class="category-badge ${catClass}">${escapeHTML(entry.category || 'Other')}</span>
+            </div>
+            <div class="kb-content">${escapeHTML(entry.content || '')}</div>
+            <div class="kb-date">🕐 ${formatDateTime(entry.created_at)}</div>
+        </div>`;
+        }
+
+        function filterKB(category) {
+            currentCategoryFilter = category;
+            loadKB();
+        }
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadKB(), 300);
+        }
+
+        // ─── Helpers ───
+        function getDaysLeft(dateStr) {
+            const due = new Date(dateStr);
+            const now = new Date();
+            return Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ─── Refresh ───
+        async function refreshData() {
+            await Promise.all([loadStats(), loadGoals('home-goals', true)]);
+            if (currentTab === 'goals') await loadGoals('goals-list', false);
+            if (currentTab === 'kb') await loadKB();
+        }
+
+        // ─── Init ───
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadGoals('home-goals', true);
+        });
+    </script>
+</body>
+
+</html>

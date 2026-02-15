@@ -24,6 +24,12 @@ LLMClient = None
 
 # Initialize Flask App
 app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'nova-ii-dev-secret-key-change-me')
+app.permanent_session_lifetime = 86400  # 24 hours
+
+# Register Dashboard Blueprint
+from interface.dashboard_routes import dashboard
+app.register_blueprint(dashboard)
 
 # Initialize LINE API
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
@@ -214,6 +220,9 @@ def process_command(message, user_id):
         - STORE_NOTE: User explicitly wants to save information, lesson, or note.
           Params: title, content, category (Notes, Lessons, Business, Customers, Other)
           
+        - UPDATE_NOTE: User wants to UPDATE/EDIT existing note content or consolidate information.
+          Params: item_id (e.g., NOTE-123), title (optional), content (optional), category (optional)
+          
         - UPDATE_KNOWLEDGE: User wants to update a knowledge entry (specifically category).
           Params: item_id (e.g., NOTE-123), category (Notes, Lessons, Business, Customers, Other)
           
@@ -291,7 +300,29 @@ def process_command(message, user_id):
         elif intent == 'STORE_NOTE':
             note_data = {"title": params.get('title', "Note"), "content": params.get('content'), "category": params.get('category', 'Notes')}
             result = store_knowledge(note_data)
-            reply_text = f"✅ บันทึกเรียบร้อยแล้วค่ะ! (ID: {result['id']})" if result else "❌ บันทึกไม่สำเร็จค่ะ"
+            
+            # Handle duplicate detection
+            if result and result.get('duplicate_found'):
+                existing_id = result.get('existing_id')
+                existing_title = result.get('existing_title')
+                reply_text = f"⚠️ พบโน้ตที่คล้ายกันอยู่แล้วค่ะ:\n\n📝 {existing_title} (ID: {existing_id})\n\nอยากให้อัปเดตโน้ตเดิมหรือสร้างใหม่อยู่ดีคะ?"
+            elif result:
+                reply_text = f"✅ บันทึกเรียบร้อยแล้วค่ะ! (ID: {result.get('id')})"
+            else:
+                reply_text = "❌ บันทึกไม่สำเร็จค่ะ"
+        
+        elif intent == 'UPDATE_NOTE':
+            item_id = params.get('item_id')
+            update_data = {}
+            if params.get('title'): update_data['title'] = params['title']
+            if params.get('content'): update_data['content'] = params['content']
+            if params.get('category'): update_data['category'] = params['category']
+            
+            if not item_id:
+                reply_text = "❌ รบกวนระบุรหัสโน้ตที่ต้องการแก้ไขด้วยนะคะ"
+            else:
+                result = update_knowledge(item_id, update_data)
+                reply_text = f"✅ อัปเดตโน้ต '{item_id}' เรียบร้อยแล้วค่ะ!" if result else f"❌ ไม่พบโน้ตรหัส '{item_id}' ค่ะ"
 
         elif intent == 'VIEW_GOALS':
             from execution.goal_utils import get_active_goals

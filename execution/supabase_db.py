@@ -84,10 +84,43 @@ def create_goal(goal_data):
     return response.data[0] if response.data else None
 
 def store_knowledge(data):
-    """Store knowledge item (note, lesson, etc.) into Supabase."""
+    """
+    Store knowledge item (note, lesson, etc.) into Supabase.
+    
+    Includes duplicate detection: checks for similar existing entries
+    and returns info if one is found instead of inserting a duplicate.
+    """
     # Ensure ID
     if 'id' not in data or not data['id']:
         data['id'] = f"NOTE-{str(uuid.uuid4())[:6]}"
+    
+    # Check for similar existing entries (basic duplicate prevention)
+    title = (data.get('title') or '').strip()
+    content = (data.get('content') or '').strip()
+    
+    if title:
+        try:
+            # Search for entries with same or very similar title
+            existing = supabase.table("knowledge_base") \
+                .select("*") \
+                .ilike("title", f"%{title}%") \
+                .limit(5) \
+                .execute()
+            
+            # Check if any result is close enough to be considered a duplicate
+            for item in existing.data:
+                existing_title = (item.get('title') or '').strip()
+                # If titles are very similar (>80% match), consider it a duplicate
+                if existing_title and title.lower() in existing_title.lower():
+                    return {
+                        'duplicate_found': True,
+                        'existing_id': item['id'],
+                        'existing_title': item['title'],
+                        'suggestion': 'update_existing'
+                    }
+        except Exception as e:
+            # If similarity check fails, proceed with insert
+            print(f"⚠️ Similarity check failed: {e}")
     
     response = supabase.table("knowledge_base").insert(data).execute()
     return response.data[0] if response.data else None

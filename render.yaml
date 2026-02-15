@@ -19,6 +19,14 @@ services:
         sync: false
       - key: GOOGLE_SHEET_ID
         sync: false
+      - key: DASHBOARD_PIN
+        sync: false
+      - key: FLASK_SECRET_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
 
   - type: cron
     name: nova-daily-reminder

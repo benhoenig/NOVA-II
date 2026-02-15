@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOVA II — Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #F5F6FA;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 24px rgba(91, 95, 199, 0.08);
+            text-align: center;
+        }
+        
+        .logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #5B5FC7, #7B7FD7);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px;
+        }
+        
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1A1D2E;
+            margin-bottom: 6px;
+        }
+        
+        .subtitle {
+            color: #8E93A6;
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+        
+        .pin-input-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        
+        .pin-digit {
+            width: 52px;
+            height: 60px;
+            border: 2px solid #E8E9F0;
+            border-radius: 14px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            color: #1A1D2E;
+            background: #FAFBFD;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        
+        .pin-digit:focus {
+            border-color: #5B5FC7;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(91, 95, 199, 0.12);
+        }
+        
+        .hidden-pin {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .error-msg {
+            background: #FFF0F0;
+            color: #E53E3E;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error-msg.show {
+            display: block;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #5B5FC7, #7B7FD7);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(91, 95, 199, 0.3);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <form class="login-card" method="POST" action="/dashboard/login">
+        <div class="logo">🤖</div>
+        <h1>NOVA II</h1>
+        <p class="subtitle">ใส่ PIN เพื่อเข้าสู่ Dashboard</p>
+        
+        {% if error %}
+        <div class="error-msg show">{{ error }}</div>
+        {% endif %}
+        
+        <input type="hidden" name="pin" id="pinValue">
+        
+        <div class="pin-input-group">
+            <input type="password" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autofocus>
+            <input type="password" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input type="password" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input type="password" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        </div>
+        
+        <button type="submit" class="submit-btn">เข้าสู่ Dashboard</button>
+    </form>
+    
+    <script>
+        const digits = document.querySelectorAll('.pin-digit');
+        const pinInput = document.getElementById('pinValue');
+        
+        digits.forEach((digit, index) => {
+            digit.addEventListener('input', (e) => {
+                if (e.target.value.length === 1 && index < digits.length - 1) {
+                    digits[index + 1].focus();
+                }
+                updatePin();
+            });
+            
+            digit.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    digits[index - 1].focus();
+                }
+            });
+            
+            // Handle paste
+            digit.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+                paste.split('').forEach((char, i) => {
+                    if (digits[i]) digits[i].value = char;
+                });
+                if (paste.length > 0) digits[Math.min(paste.length, 3)].focus();
+                updatePin();
+            });
+        });
+        
+        function updatePin() {
+            pinInput.value = Array.from(digits).map(d => d.value).join('');
+        }
+        
+        // Auto-submit when 4 digits entered
+        document.querySelector('form').addEventListener('input', () => {
+            const pin = Array.from(digits).map(d => d.value).join('');
+            if (pin.length === 4) {
+                pinInput.value = pin;
+                document.querySelector('form').submit();
+            }
+        });
+    </script>
+</body>
+</html>
