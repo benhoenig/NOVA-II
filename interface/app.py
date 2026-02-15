@@ -153,6 +153,7 @@ def process_command(message, user_id):
         - Be proactive: If Ben shares a fact, ask if he wants to save it.
         - Be reasoning-oriented: Don't just list data, evaluate it if asked.
         - Be conversational: Use friendly Thai (Female tone: use 'ค่ะ/คะ') or English.
+        - Be knowledgeable: You have access to Supabase tables: 'knowledge_base', 'goals', 'tasks', and 'business_portfolio'.
         
         RECENT CONTEXT:
         {history_str}
