@@ -117,6 +117,13 @@ def create_goal(name, description='', due_date=None, goal_type='', priority='Med
         if auto_breakdown:
             breakdown_existing_goal(goal_id)
         
+        # Log action
+        try:
+            from execution.action_logger import log_action
+            log_action('CREATE_GOAL', f"Created goal: {name}", {'goal_id': goal_id, 'name': name})
+        except ImportError:
+            pass
+
         return {
             'success': True,
             'goal_id': goal_id,

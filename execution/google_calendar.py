@@ -242,7 +242,7 @@ def delete_event(event_id):
             calendarId='primary',
             eventId=event_id
         ).execute()
-        return {'success': True}
+        return {'success': True, 'id': event_id}
 
     except HttpError as error:
         print(f"❌ Error deleting event: {error}")

@@ -7,6 +7,7 @@
     <title>NOVA II — Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/dashboard/static/dashboard.css">
 </head>
 
@@ -16,8 +17,10 @@
     <div class="header">
         <h1>สวัสดีค่ะ <span>เบน</span>! 👋</h1>
         <div class="header-actions">
-            <button class="header-btn" onclick="refreshData()" title="Refresh">🔄</button>
-            <a class="header-btn" href="/dashboard/logout" title="Logout">🚪</a>
+            <button class="header-btn" onclick="refreshData()" title="Reload"><i
+                    class="fa-solid fa-rotate"></i></button>
+            <a class="header-btn" href="/dashboard/logout" title="Logout"><i
+                    class="fa-solid fa-right-from-bracket"></i></a>
         </div>
     </div>
 
@@ -27,17 +30,17 @@
         <!-- Stat Cards -->
         <div class="stat-cards">
             <div class="stat-card" onclick="switchTab('goals')">
-                <div class="icon">🎯</div>
+                <div class="icon"><i class="fa-solid fa-bullseye"></i></div>
                 <div class="number" id="stat-goals">-</div>
                 <div class="label">Active Goals</div>
             </div>
             <div class="stat-card" onclick="switchTab('goals')">
-                <div class="icon">✅</div>
+                <div class="icon"><i class="fa-solid fa-square-check"></i></div>
                 <div class="number" id="stat-tasks">-</div>
                 <div class="label">Tasks Done</div>
             </div>
             <div class="stat-card" onclick="switchTab('kb')">
-                <div class="icon">📝</div>
+                <div class="icon"><i class="fa-solid fa-note-sticky"></i></div>
                 <div class="number" id="stat-kb">-</div>
                 <div class="label">Notes</div>
             </div>
@@ -54,12 +57,31 @@
             </div>
         </div>
 
-        <!-- Upcoming Events -->
+        <!-- Quick Actions -->
         <div class="section-header">
-            <h2>📅 Upcoming Events</h2>
-            <span class="see-all" onclick="switchTab('chat')">Chat →</span>
+            <h2>⚡ Quick Actions</h2>
         </div>
-        <div id="home-calendar" class="calendar-list">
+        <div class="quick-actions">
+            <div class="action-btn" onclick="openGoalModal()">
+                <i class="fa-solid fa-bullseye"></i>
+                <span>New Goal</span>
+            </div>
+            <div class="action-btn" onclick="openEventModal()">
+                <i class="fa-solid fa-calendar-plus"></i>
+                <span>Add Event</span>
+            </div>
+            <div class="action-btn"
+                onclick="switchTab('chat'); setTimeout(() => { const i = document.getElementById('chat-input'); i.value = 'บันทึกโน้ตใหม่: '; i.focus(); }, 500)">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>New Note</span>
+            </div>
+        </div>
+
+        <!-- Recent History -->
+        <div class="section-header">
+            <h2>📜 Recent Activity</h2>
+        </div>
+        <div id="history-list" class="history-list">
             <div class="loading">
                 <div class="spinner"></div>Loading...
             </div>
@@ -86,7 +108,7 @@
         </div>
         <div class="kb-controls">
             <div class="search-wrapper">
-                <span class="search-icon">🔍</span>
+                <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
                 <input type="text" class="search-bar" placeholder="ค้นหาโน้ต..." id="kb-search"
                     oninput="debounceSearch()">
             </div>
@@ -110,13 +132,13 @@
             </div>
             <div class="chat-messages" id="chat-messages">
                 <div class="chat-welcome">
-                    <div class="chat-welcome-icon">🤖</div>
+                    <div class="chat-welcome-icon"><i class="fa-solid fa-robot"></i></div>
                     <p>สวัสดีค่ะ! โนว่าพร้อมช่วยเหลือแล้วค่ะ</p>
                     <span class="chat-welcome-hint">พิมพ์ข้อความด้านล่างเพื่อเริ่มแชทกับโนว่า</span>
                 </div>
             </div>
             <div class="typing-indicator" id="typing-indicator" style="display: none;">
-                <div class="typing-avatar">🤖</div>
+                <div class="typing-avatar"><i class="fa-solid fa-robot"></i></div>
                 <div class="typing-dots">
                     <span></span><span></span><span></span>
                 </div>
@@ -126,7 +148,7 @@
                 <textarea id="chat-input" placeholder="พิมพ์ข้อความ..." rows="1"
                     onkeydown="handleChatKey(event)"></textarea>
                 <button class="chat-send-btn" id="chat-send-btn" onclick="sendMessage()">
-                    <span>➤</span>
+                    <span><i class="fa-solid fa-paper-plane"></i></span>
                 </button>
             </div>
         </div>
@@ -139,27 +161,27 @@
         </div>
         <div class="settings-list">
             <div class="settings-item">
-                <span class="label">📊 Total Goals</span>
+                <span class="label"><i class="fa-solid fa-chart-simple"></i> Total Goals</span>
                 <span class="value" id="set-total-goals">-</span>
             </div>
             <div class="settings-item">
-                <span class="label">✅ Tasks Completed</span>
+                <span class="label"><i class="fa-solid fa-square-check"></i> Tasks Completed</span>
                 <span class="value" id="set-done-tasks">-</span>
             </div>
             <div class="settings-item">
-                <span class="label">📝 Knowledge Entries</span>
+                <span class="label"><i class="fa-solid fa-note-sticky"></i> Knowledge Entries</span>
                 <span class="value" id="set-kb-count">-</span>
             </div>
             <div class="settings-item">
-                <span class="label">🕐 Last Updated</span>
+                <span class="label"><i class="fa-solid fa-clock"></i> Last Updated</span>
                 <span class="value" id="set-last-update">-</span>
             </div>
             <div class="settings-item">
-                <span class="label">🤖 System</span>
+                <span class="label"><i class="fa-solid fa-robot"></i> System</span>
                 <span class="value">NOVA II v2.0</span>
             </div>
         </div>
-        <a href="/dashboard/logout" class="logout-btn">🚪 ออกจากระบบ</a>
+        <a href="/dashboard/logout" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</a>
     </div>
 
     <!-- ═══ MODALS ═══ -->
@@ -199,28 +221,62 @@
                 </div>
             </form>
         </div>
+
+        <div id="event-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeEventModal()">&times;</span>
+                <h2>📅 New Event</h2>
+                <form id="event-form" onsubmit="submitEvent(event)">
+                    <div class="form-group">
+                        <label>Event Name</label>
+                        <input type="text" id="evt-summary" required placeholder="e.g. Meeting with Client">
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="evt-date" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start</label>
+                            <input type="time" id="evt-start" required value="09:00">
+                        </div>
+                        <div class="form-group">
+                            <label>End</label>
+                            <input type="time" id="evt-end" required value="10:00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Location (Optional)</label>
+                        <input type="text" id="evt-location" placeholder="e.g. Zoom / Office">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="primary-btn">Create Event</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Bottom Navigation -->
     <nav class="bottom-nav">
         <button class="nav-item active" onclick="switchTab('home')">
-            <span class="nav-icon">🏠</span>
+            <span class="nav-icon"><i class="fa-solid fa-house"></i></span>
             <span class="nav-label">Home</span>
         </button>
         <button class="nav-item" onclick="switchTab('goals')">
-            <span class="nav-icon">🎯</span>
+            <span class="nav-icon"><i class="fa-solid fa-bullseye"></i></span>
             <span class="nav-label">Goals</span>
         </button>
         <button class="nav-item" onclick="switchTab('kb')">
-            <span class="nav-icon">📝</span>
+            <span class="nav-icon"><i class="fa-solid fa-note-sticky"></i></span>
             <span class="nav-label">KB</span>
         </button>
         <button class="nav-item" onclick="switchTab('chat')">
-            <span class="nav-icon">💬</span>
+            <span class="nav-icon"><i class="fa-solid fa-comments"></i></span>
             <span class="nav-label">Chat</span>
         </button>
         <button class="nav-item" onclick="switchTab('settings')">
-            <span class="nav-icon">⚙️</span>
+            <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
             <span class="nav-label">Settings</span>
         </button>
     </nav>
@@ -292,50 +348,32 @@
             document.getElementById('set-last-update').textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // ─── Load Calendar ───
-        async function loadCalendar() {
-            const container = document.getElementById('home-calendar');
-            const data = await fetchAPI('/api/calendar?days=7');
+        async function loadHistory() {
+            const container = document.getElementById('history-list');
+            const data = await fetchAPI('/api/history');
 
-            if (!data || !data.success || !data.events || data.events.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>ไม่มี events ในสัปดาห์นี้ค่ะ</p></div>';
+            if (!data || !data.success || !data.logs || data.logs.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-scroll"></i></div><p>No recent activity</p></div>';
                 return;
             }
 
-            container.innerHTML = '';
-            let currentDate = null;
+            container.innerHTML = data.logs.map(log => {
+                let icon = 'fa-circle-info';
+                if (log.action_type.includes('GOAL')) icon = 'fa-bullseye';
+                if (log.action_type.includes('TASK')) icon = 'fa-check';
+                if (log.action_type.includes('EVENT')) icon = 'fa-calendar-day';
+                if (log.action_type.includes('DELETE')) icon = 'fa-trash';
 
-            data.events.forEach(event => {
-                const start = event.start;
-                let dateLabel, timeLabel;
-
-                if (event.all_day) {
-                    const dt = new Date(start + 'T00:00:00');
-                    dateLabel = dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-                    timeLabel = 'ทั้งวัน';
-                } else {
-                    const dt = new Date(start);
-                    dateLabel = dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-                    const endDt = new Date(event.end);
-                    timeLabel = dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' - ' + endDt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-                }
-
-                if (dateLabel !== currentDate) {
-                    currentDate = dateLabel;
-                    container.innerHTML += `<div class="calendar-date-header">📆 ${dateLabel}</div>`;
-                }
-
-                const loc = event.location ? `<div class="calendar-location">📍 ${event.location}</div>` : '';
-                container.innerHTML += `
-                    <div class="calendar-event-card">
-                        <div class="calendar-event-time">${timeLabel}</div>
-                        <div class="calendar-event-info">
-                            <div class="calendar-event-title">${event.summary}</div>
-                            ${loc}
+                return `
+                    <div class="history-item">
+                        <div class="history-icon"><i class="fa-solid ${icon}"></i></div>
+                        <div class="history-content">
+                            <span class="history-text">${escapeHTML(log.description)}</span>
+                            <span class="history-time">${formatChatTime(log.created_at)}</span>
                         </div>
                     </div>
                 `;
-            });
+            }).join('');
         }
 
         // ─── Load Goals ───
@@ -366,9 +404,9 @@
         function renderGoalCard(goal) {
             const daysLeft = goal.due_date ? getDaysLeft(goal.due_date) : null;
             const daysText = daysLeft !== null
-                ? (daysLeft < 0 ? `⏰ เลยกำหนด ${Math.abs(daysLeft)} วัน`
-                    : daysLeft === 0 ? '⏰ ครบกำหนดวันนี้!'
-                        : `⏰ อีก ${daysLeft} วัน`)
+                ? (daysLeft < 0 ? `<i class="fa-solid fa-clock"></i> เลยกำหนด ${Math.abs(daysLeft)} วัน`
+                    : daysLeft === 0 ? '<i class="fa-solid fa-clock"></i> ครบกำหนดวันนี้!'
+                        : `<i class="fa-solid fa-clock"></i> อีก ${daysLeft} วัน`)
                 : '';
 
             const urgencyClass = goal.urgency || 'normal';
@@ -380,10 +418,10 @@
 
                 return `<div class="task-item">
                 <div class="task-checkbox ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '${task.status}')">
-                    ${isDone ? '✓' : ''}
+                    ${isDone ? '<i class="fa-solid fa-check"></i>' : ''}
                 </div>
                 <span class="task-name ${isDone ? 'done' : ''}">${escapeHTML(task.name)}</span>
-                <span class="task-delete" onclick="event.stopPropagation(); deleteTask('${task.id}')">×</span>
+                <span class="task-delete" onclick="event.stopPropagation(); deleteTask('${task.id}')"><i class="fa-solid fa-xmark"></i></span>
             </div>`;
             }).join('');
 
@@ -392,13 +430,13 @@
                 <span class="goal-name">${escapeHTML(goal.name)}</span>
                 <div class="goal-actions">
                      <span class="urgency-badge ${urgencyClass}">${urgencyLabels[urgencyClass]}</span>
-                     <div class="menu-dots" onclick="event.stopPropagation(); showGoalMenu(this, '${goal.id}')">⋮</div>
+                     <div class="menu-dots" onclick="event.stopPropagation(); showGoalMenu(this, '${goal.id}')"><i class="fa-solid fa-ellipsis-vertical"></i></div>
                 </div>
             </div>
             <div class="goal-meta">
-                ${goal.due_date ? `<span>📅 ${formatDate(goal.due_date)}</span>` : ''}
+                ${goal.due_date ? `<span><i class="fa-solid fa-calendar-days"></i> ${formatDate(goal.due_date)}</span>` : ''}
                 <span>${daysText}</span>
-                <span>📌 ${goal.status}</span>
+                <span><i class="fa-solid fa-thumbtack"></i> ${goal.status}</span>
             </div>
             <div class="progress-bar">
                 <div class="progress-fill" style="width: ${goal.progress}%"></div>
@@ -461,7 +499,7 @@
                 <span class="category-badge ${catClass}">${escapeHTML(entry.category || 'Other')}</span>
             </div>
             <div class="kb-content">${escapeHTML(entry.content || '')}</div>
-            <div class="kb-date">🕐 ${formatDateTime(entry.created_at)}</div>
+            <div class="kb-date"><i class="fa-solid fa-clock"></i> ${formatDateTime(entry.created_at)}</div>
         </div>`;
         }
 
@@ -646,9 +684,55 @@
             document.getElementById('goal-modal').style.display = 'flex';
         }
 
-        function closeGoalModal() {
-            document.getElementById('goal-modal').style.display = 'none';
+        function openEventModal() {
+            // Set default date to today
+            document.getElementById('evt-date').valueAsDate = new Date();
+            document.getElementById('event-modal').style.display = 'flex';
         }
+
+        function closeEventModal() {
+            document.getElementById('event-modal').style.display = 'none';
+        }
+
+        async function submitEvent(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.textContent;
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
+
+            const payload = {
+                summary: document.getElementById('evt-summary').value,
+                date: document.getElementById('evt-date').value,
+                start: document.getElementById('evt-start').value,
+                end: document.getElementById('evt-end').value,
+                location: document.getElementById('evt-location').value
+            };
+
+            try {
+                const res = await fetch('/api/calendar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeEventModal();
+                    e.target.reset();
+                    // Reload history
+                    loadHistory();
+                    alert('Event created successfully!');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Connection error');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
 
         async function submitGoal(e) {
             e.preventDefault();
@@ -760,7 +844,7 @@
 
         // ─── Refresh ───
         async function refreshData() {
-            await Promise.all([loadStats(), loadGoals('home-goals', true), loadCalendar()]);
+            await Promise.all([loadStats(), loadGoals('home-goals', true), loadHistory()]);
             if (currentTab === 'goals') await loadGoals('goals-list', false);
             if (currentTab === 'kb') await loadKB();
         }
@@ -769,7 +853,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadStats();
             loadGoals('home-goals', true);
-            loadCalendar();
+            loadHistory();
         });
     </script>
 </body>

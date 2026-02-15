@@ -116,3 +116,12 @@ CREATE TABLE IF NOT EXISTS chat_history (
     intent TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Note: Run this manually in Supabase SQL Editor if not using migration tool
+CREATE TABLE IF NOT EXISTS history_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    action_type TEXT NOT NULL,
+    description TEXT NOT NULL,
+    details JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);

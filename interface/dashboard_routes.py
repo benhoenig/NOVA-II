@@ -197,6 +197,14 @@ def update_goal_api(goal_id):
             return jsonify({'success': False, 'error': 'No valid fields to update'}), 400
             
         result = update_goal(goal_id, updates)
+        
+        # Log action
+        try:
+            from execution.action_logger import log_action
+            log_action('UPDATE_GOAL', f"Updated goal: {goal_id}", {'id': goal_id, 'updates': updates})
+        except:
+            pass
+            
         return jsonify({'success': True, 'data': result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -209,6 +217,14 @@ def delete_goal_api(goal_id):
     
     try:
         result = delete_goal(goal_id)
+        
+        # Log action
+        try:
+            from execution.action_logger import log_action
+            log_action('DELETE_GOAL', f"Deleted goal: {goal_id}", {'id': goal_id})
+        except:
+            pass
+            
         return jsonify({'success': True, 'data': result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -237,6 +253,14 @@ def create_task_api():
         }]
         
         result = create_tasks(task_data)
+        
+        # Log action
+        try:
+            from execution.action_logger import log_action
+            log_action('CREATE_TASK', f"Created task: {name}", {'goal_id': goal_id, 'name': name})
+        except:
+            pass
+            
         return jsonify({'success': True, 'data': result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -257,6 +281,15 @@ def update_task_api(task_id):
              return jsonify({'success': False, 'error': 'Invalid status'}), 400
              
         result = update_task(task_id, data)
+        
+        # Log action
+        try:
+            from execution.action_logger import log_action
+            action_type = 'COMPLETE_TASK' if data.get('status') == 'Done' else 'UPDATE_TASK'
+            log_action(action_type, f"Updated task {task_id}", {'id': task_id, 'updates': data})
+        except:
+            pass
+
         return jsonify({'success': True, 'data': result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -269,6 +302,14 @@ def delete_task_api(task_id):
     
     try:
         result = delete_task(task_id)
+        
+        # Log action
+        try:
+            from execution.action_logger import log_action
+            log_action('DELETE_TASK', f"Deleted task {task_id}", {'id': task_id})
+        except:
+            pass
+            
         return jsonify({'success': True, 'data': result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -348,16 +389,80 @@ def api_chat_history():
 
 # ─── Calendar API Endpoint ───────────────────────
 
-@dashboard.route('/api/calendar')
+@dashboard.route('/api/calendar', methods=['GET'])
 @login_required
-def api_calendar():
-    """Get upcoming calendar events."""
+def api_calendar_list():
+    """Get upcoming calendar events (Manual fetch)."""
     from execution.google_calendar import list_events
-    
     try:
         days = int(request.args.get('days', 7))
         events = list_events(days=days)
         return jsonify({'success': True, 'events': events})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@dashboard.route('/api/calendar', methods=['POST'])
+@login_required
+def api_calendar_create():
+    """Create a new calendar event."""
+    from execution.google_calendar import create_event
+    from execution.action_logger import log_action
+    
+    try:
+        data = request.get_json()
+        summary = data.get('summary')
+        date = data.get('date') # YYYY-MM-DD
+        start = data.get('start') # HH:MM
+        end = data.get('end') # HH:MM
+        
+        if not summary or not date:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+            
+        start_iso = f"{date}T{start}:00"
+        end_iso = f"{date}T{end}:00"
+        
+        result = create_event(summary, start_iso, end_iso, 
+                            description=data.get('description'),
+                            location=data.get('location'))
+                            
+        if result and result.get('success'):
+            log_action('CREATE_EVENT', f"Created event: {summary}", result)
+            return jsonify(result)
+        else:
+            return jsonify({'success': False, 'error': 'Failed to create event'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@dashboard.route('/api/calendar/<event_id>', methods=['DELETE'])
+@login_required
+def api_calendar_delete(event_id):
+    """Delete a calendar event."""
+    from execution.google_calendar import delete_event
+    from execution.action_logger import log_action
+    
+    try:
+        # Optional: Fetch event details before delete if we want the name, 
+        # but for now logging ID is acceptable or we rely on client sending name?
+        # Let's just log ID.
+        result = delete_event(event_id)
+        if result.get('success'):
+            log_action('DELETE_EVENT', f"Deleted event ID: {event_id}", {'id': event_id})
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@dashboard.route('/api/history')
+@login_required
+def api_history():
+    """Get recent history logs."""
+    from execution.supabase_db import supabase
+    try:
+        response = supabase.table("history_logs") \
+            .select("*") \
+            .order("created_at", desc=True) \
+            .limit(20) \
+            .execute()
+        return jsonify({'success': True, 'logs': response.data})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
