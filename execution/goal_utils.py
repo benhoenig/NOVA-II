@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from execution.supabase_db import get_active_goals as fetch_goals
+from execution.supabase_db import get_active_goals as fetch_goals, get_all_active_tasks
 
 def get_active_goals():
     """Fetch active goals from Supabase."""
@@ -14,6 +14,12 @@ def get_active_goals():
         return []
 
 def get_daily_tasks():
-    """Fetch tasks due today or high priority."""
-    # For now, just return active goals as a summary
-    return get_active_goals()
+    """Fetch all tasks that are currently active/in progress."""
+    print("📅 Fetching daily tasks via Supabase...")
+    try:
+        tasks = get_all_active_tasks()
+        print(f"✅ Found {len(tasks)} active tasks in Supabase.")
+        return tasks
+    except Exception as e:
+        print(f"❌ Error in get_daily_tasks (Supabase): {e}")
+        return []
