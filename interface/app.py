@@ -100,11 +100,19 @@ def process_command(message, user_id):
     try:
         client = LLMClient()
         
-        # 0. Save User Message immediately for context
-        save_chat_message(user_id, "user", message)
+        # 0. Save User Message immediately for context (Fail-safe)
+        try:
+            save_chat_message(user_id, "user", message)
+        except Exception as e:
+            app.logger.warning(f"Could not save user message to history: {e}")
         
         # 0.1 Fetch Chat History (including the current message)
-        history = get_chat_history(user_id, limit=6)
+        history = []
+        try:
+            history = get_chat_history(user_id, limit=6)
+        except Exception as e:
+            app.logger.warning(f"Could not fetch chat history: {e}")
+            
         history_str = "\n".join([f"{m['role']}: {m['message']}" for m in history])
 
         # 1. Intent Classification
@@ -278,15 +286,24 @@ def process_command(message, user_id):
         elif intent == 'CHAT':
             reply_text = params.get('response', "รับทราบครับ!")
              
-        # 3. Save Assistant Response to History
-        save_chat_message(user_id, "assistant", reply_text, intent)
+        # 3. Save Assistant Response to History (Fail-safe)
+        try:
+            save_chat_message(user_id, "assistant", reply_text, intent)
+        except Exception as e:
+            app.logger.warning(f"Could not save assistant response to history: {e}")
         
         return reply_text
 
     except Exception as e:
-        print(f"Error: {e}")
-        error_msg = f"Error processing command: {str(e)}"
-        save_chat_message(user_id, "system_error", error_msg)
+        app.logger.error(f"Critical error in process_command: {e}")
+        error_msg = f"ขออภัยครับ เกิดข้อผิดพลาดในระบบ: {str(e)}"
+        
+        # Safe save for error
+        try:
+            save_chat_message(user_id, "system_error", str(e))
+        except:
+            pass
+            
         return error_msg
 
 if __name__ == "__main__":
