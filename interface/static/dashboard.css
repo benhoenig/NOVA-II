@@ -119,6 +119,18 @@ body {
     margin-bottom: 6px;
 }
 
+.stat-card:nth-child(1) .icon {
+    color: var(--accent);
+}
+
+.stat-card:nth-child(2) .icon {
+    color: var(--green);
+}
+
+.stat-card:nth-child(3) .icon {
+    color: var(--yellow);
+}
+
 .stat-card .number {
     font-size: 28px;
     font-weight: 700;
@@ -1312,6 +1324,18 @@ body {
     margin-bottom: 4px;
 }
 
+.quick-actions .action-btn:nth-child(1) i {
+    color: var(--accent);
+}
+
+.quick-actions .action-btn:nth-child(2) i {
+    color: var(--green);
+}
+
+.quick-actions .action-btn:nth-child(3) i {
+    color: var(--yellow);
+}
+
 .action-btn span {
     font-size: 12px;
     font-weight: 500;
@@ -1346,6 +1370,26 @@ body {
     color: var(--text-secondary);
     font-size: 14px;
     flex-shrink: 0;
+}
+
+.history-icon.goal {
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
+.history-icon.task {
+    color: var(--green);
+    background: var(--green-bg);
+}
+
+.history-icon.event {
+    color: var(--yellow);
+    background: var(--yellow-bg);
+}
+
+.history-icon.delete {
+    color: var(--red);
+    background: var(--red-bg);
 }
 
 .history-content {

@@ -359,14 +359,20 @@
 
             container.innerHTML = data.logs.map(log => {
                 let icon = 'fa-circle-info';
-                if (log.action_type.includes('GOAL')) icon = 'fa-bullseye';
-                if (log.action_type.includes('TASK')) icon = 'fa-check';
-                if (log.action_type.includes('EVENT')) icon = 'fa-calendar-day';
-                if (log.action_type.includes('DELETE')) icon = 'fa-trash';
+                let typeClass = '';
+
+                if (log.action_type.includes('GOAL')) { icon = 'fa-bullseye'; typeClass = 'goal'; }
+                if (log.action_type.includes('TASK')) { icon = 'fa-check'; typeClass = 'task'; }
+                if (log.action_type.includes('EVENT')) { icon = 'fa-calendar-day'; typeClass = 'event'; }
+
+                if (log.action_type.includes('DELETE')) {
+                    icon = 'fa-trash';
+                    typeClass = 'delete';
+                }
 
                 return `
                     <div class="history-item">
-                        <div class="history-icon"><i class="fa-solid ${icon}"></i></div>
+                        <div class="history-icon ${typeClass}"><i class="fa-solid ${icon}"></i></div>
                         <div class="history-content">
                             <span class="history-text">${escapeHTML(log.description)}</span>
                             <span class="history-time">${formatChatTime(log.created_at)}</span>
