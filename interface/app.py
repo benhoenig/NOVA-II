@@ -38,6 +38,10 @@ handler = WebhookHandler(channel_secret or 'dummy')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Message De-duplication Cache
+processed_message_ids = set()
+cache_lock = threading.Lock()
+
 # Warmup Thread
 def warmup_modules():
     """Import heavy modules in background to speed up first request."""
@@ -98,16 +102,48 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+    message_id = event.message.id
     user_id = event.source.user_id
+    reply_token = event.reply_token
+    user_message = event.message.text.strip()
+    
+    # 1. Check for duplicates (De-duplication)
+    with cache_lock:
+        if message_id in processed_message_ids:
+            logger.info(f"⏭️ Skipping duplicate message: {message_id}")
+            return
+        processed_message_ids.add(message_id)
+        # Keep cache size manageable (last 500 IDs)
+        if len(processed_message_ids) > 500:
+            processed_message_ids.pop()
+    
+    # 2. Save User ID
     save_user_id(user_id)
     
-    user_message = event.message.text.strip()
-    reply_text = process_command(user_message, user_id)
-    
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=reply_text)
-    )
+    # 3. Process in Background Thread
+    def async_process():
+        try:
+            logger.info(f"🧵 Processing message {message_id} in background...")
+            reply_text = process_command(user_message, user_id)
+            
+            line_bot_api.reply_message(
+                reply_token,
+                TextSendMessage(text=reply_text)
+            )
+            logger.info(f"✅ Background processing complete for {message_id}")
+        except Exception as e:
+            logger.error(f"❌ Error in async_process: {e}")
+            # Optional: Send error message back if token is still valid
+            try:
+                line_bot_api.reply_message(
+                    reply_token,
+                    TextSendMessage(text="ขออภัยค่ะ โนว่าประมวลผลผิดพลาด รบกวนลองอีกครั้งนะคะ")
+                )
+            except:
+                pass
+
+    threading.Thread(target=async_process, daemon=True).start()
+    logger.info(f"🚀 Started background thread for {message_id}. Returning 200 OK...")
 
 def process_command(message, user_id):
     """Process message using LLM to determine intent."""
