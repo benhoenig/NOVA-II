@@ -135,3 +135,13 @@ def update_task(task_id, update_data):
     """Update task fields (e.g., status, due_date)."""
     response = supabase.table("tasks").update(update_data).eq("id", task_id).execute()
     return response.data
+
+def get_goal_by_id(goal_id):
+    """Fetch a specific goal by ID."""
+    response = supabase.table("goals").select("*").eq("id", goal_id).execute()
+    return response.data[0] if response.data else None
+
+def update_knowledge(item_id, update_data):
+    """Update knowledge base item fields (e.g., category)."""
+    response = supabase.table("knowledge_base").update(update_data).eq("id", item_id).execute()
+    return response.data

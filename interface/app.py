@@ -152,7 +152,7 @@ def process_command(message, user_id):
     # Lazy Imports
     from execution.supabase_db import (
         save_chat_message, get_chat_history, delete_goal, 
-        search_knowledge, store_knowledge, delete_task, update_task, get_task_by_name_partial
+        search_knowledge, store_knowledge, update_knowledge, delete_task, update_task, get_task_by_name_partial
     )
     from execution.llm_utils import LLMClient as ActualLLMClient
     from execution.goal_create import create_goal, breakdown_existing_goal
@@ -222,6 +222,9 @@ def process_command(message, user_id):
           
         - UPDATE_TASK: User wants to change task status (e.g. to 'Done', 'In Progress').
           Params: task_id or task_name, status
+          
+        - UPDATE_KNOWLEDGE: User wants to update a knowledge base entry (Note, Lesson, etc.), specifically the category.
+          Params: item_id (e.g., NOTE-123), category (Notes, Lessons, Business, Customers, Other)
           
         - CHAT: General conversation.
           Params: response (your helpful reply)
@@ -357,6 +360,20 @@ def process_command(message, user_id):
                 else:
                     reply_text += "\n\nมีจุดไหนที่อยากให้โนว่าเจาะลึกเพิ่มไหมคะ?"
         
+        elif intent == 'UPDATE_KNOWLEDGE':
+            item_id = params.get('item_id')
+            new_cat = params.get('category')
+            
+            if not item_id or not new_cat:
+                reply_text = "❌ รบกวนระบุรหัสโน้ต (เช่น NOTE-123) และหมวดหมู่ที่ต้องการเปลี่ยนด้วยนะคะ"
+            else:
+                logger.info(f"✏️ Updating knowledge {item_id} to category {new_cat}")
+                result = update_knowledge(item_id, {"category": new_cat})
+                if result:
+                    reply_text = f"✅ อัปเดตหมวดหมู่ของโน้ต '{item_id}' เป็น '{new_cat}' เรียบร้อยแล้วค่ะ! ✨"
+                else:
+                    reply_text = f"❌ ไม่พบโน้ตรหัส '{item_id}' หรือไม่สามารถอัปเดตได้ค่ะ"
+                    
         elif intent == 'STORE_NOTE':
             title = params.get('title')
             content = params.get('content')
