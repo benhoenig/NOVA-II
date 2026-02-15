@@ -155,7 +155,7 @@ def process_command(message, user_id):
         search_knowledge, store_knowledge, delete_task, update_task, get_task_by_name_partial
     )
     from execution.llm_utils import LLMClient as ActualLLMClient
-    from execution.goal_create import create_goal
+    from execution.goal_create import create_goal, breakdown_existing_goal
     
     if message.lower() == 'ping':
         return 'pong! NOVA II is online.'
@@ -196,7 +196,11 @@ def process_command(message, user_id):
         
         Available Intents:
         - CREATE_GOAL: User wants to create a new goal.
-          Params: name, description, due_date (YYYY-MM-DD), response (a helpful Thai reply to clarify or ask for missing info like name or due date)
+          Params: name, description, due_date (YYYY-MM-DD), response (a helpful Thai reply to clarify missing info)
+          Note: This only creates the record. You MUST ask if they want a task breakdown afterwards.
+          
+        - CONFIRM_TASKS: User says "Yes", "ตกลง", "ช่วยแตกงานหน่อย" or confirms they want the action plan/tasks for the LAST goal created.
+          Params: goal_id (optional, if mentioned)
           
         - VIEW_GOALS: User wants to see their goals.
           Params: none
@@ -256,14 +260,35 @@ def process_command(message, user_id):
             if not name:
                 reply_text = llm_response or "ยินดีช่วยตั้งเป้าหมายค่ะ! อยากให้เป้าหมายนี้ชื่อว่าอะไรดีคะ?"
             else:
-                # Use goal_create logic
-                logger.info(f"🎯 Creating goal: {name} (Auto-breakdown: True)")
-                result = create_goal(name, description=desc, due_date=due, auto_breakdown=True)
+                # Use goal_create logic - Default to False for auto_breakdown
+                logger.info(f"🎯 Creating goal: {name} (Auto-breakdown: False)")
+                result = create_goal(name, description=desc, due_date=due, auto_breakdown=False)
                 logger.info(f"✅ Goal creation result: {result.get('success')}")
                 if result.get('success'):
-                    reply_text = f"✅ เป้าหมาย '{name}' ถูกสร้างแล้วค่ะ!\n\n📅 กำหนดส่ง: {due or 'ไม่ระบุ'}\n📝 โนว่าได้สร้าง Action Plan เบื้องต้นให้แล้วค่ะ"
+                    goal_id = result.get('goal_id')
+                    reply_text = f"✅ บันทึกเป้าหมาย '{name}' เรียบร้อยแล้วค่ะ!\n\n📅 กำหนดส่ง: {due or 'ไม่ระบุ'}\n\n**อยากให้โนว่าช่วยแตกเป็นรายการงานย่อย (Tasks) ให้เลยไหมคะ?** (พิมพ์ 'ใช่' หรือ 'ตกลง' ได้เลยค่ะ)"
                 else:
                     reply_text = f"❌ เกิดข้อผิดพลาดในการสร้างเป้าหมายค่ะ: {result.get('error')}"
+            
+        elif intent == 'CONFIRM_TASKS':
+            from execution.goal_utils import get_active_goals
+            goals = get_active_goals()
+            
+            if not goals:
+                reply_text = "🔍 ไม่พบเป้าหมายล่าสุดที่กำลังดำเนินการอยู่ค่ะ รบกวนสร้างเป้าหมายก่อนนะคะ"
+            else:
+                # Take the most recent goal
+                last_goal = goals[0] # Assumes ordered by created_at desc
+                goal_id = last_goal['id']
+                goal_name = last_goal['name']
+                
+                logger.info(f"🧠 Breaking down goal: {goal_name} ({goal_id})")
+                result = breakdown_existing_goal(goal_id)
+                
+                if result.get('success'):
+                    reply_text = f"✨ โนว่าแตกรายการงานย่อยให้เป้าหมาย '{goal_name}' เรียบร้อยแล้วค่ะ! {result.get('tasks_count')} รายการ\n\nสามารถพิมพ์ 'เช็คงาน' เพื่อดูรายละเอียดได้นะคะ"
+                else:
+                    reply_text = f"❌ ขออภัยค่ะ โนว่าไม่สามารถแตกรายการงานได้ในขณะนี้: {result.get('error')}"
             
         elif intent == 'VIEW_GOALS':
             from execution.goal_utils import get_active_goals

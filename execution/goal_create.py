@@ -61,6 +61,33 @@ def generate_breakdown(name, description, due_date):
         print(f"Warning: Failed to generate breakdown: {e}")
     return []
 
+def breakdown_existing_goal(goal_id):
+    """Break down an existing goal into tasks based on its details in Supabase."""
+    from execution.supabase_db import get_goal_by_id
+    
+    print(f"🧠 Breaking down existing goal (ID: {goal_id})...")
+    goal = get_goal_by_id(goal_id)
+    if not goal:
+        print(f"❌ Goal not found: {goal_id}")
+        return {'success': False, 'error': 'Goal not found'}
+    
+    tasks = generate_breakdown(goal['name'], goal.get('description', ''), goal.get('due_date'))
+    
+    if tasks:
+        tasks_data = []
+        for t in tasks:
+            tasks_data.append({
+                "goal_id": goal_id,
+                "name": t,
+                "status": "Todo",
+                "priority": "Medium"
+            })
+        db_create_tasks(tasks_data)
+        print(f"  ✅ Action plan generated with {len(tasks)} tasks.")
+        return {'success': True, 'tasks_count': len(tasks)}
+    else:
+        return {'success': False, 'error': 'Failed to generate tasks'}
+
 def create_goal(name, description='', due_date=None, goal_type='', priority='Medium', reminder='', auto_breakdown=False):
     """Create a new goal in Supabase."""
     print(f"🎯 Creating goal in Supabase: {name}\n")
@@ -86,20 +113,7 @@ def create_goal(name, description='', due_date=None, goal_type='', priority='Med
         
         # Auto-breakdown
         if auto_breakdown:
-            print(f"🧠 Generating action plan with AI...")
-            tasks = generate_breakdown(name, description, parsed_due)
-            
-            if tasks:
-                tasks_data = []
-                for t in tasks:
-                    tasks_data.append({
-                        "goal_id": goal_id,
-                        "name": t,
-                        "status": "Todo",
-                        "priority": "Medium"
-                    })
-                db_create_tasks(tasks_data)
-                print(f"  ✅ Action plan generated with {len(tasks)} tasks.")
+            breakdown_existing_goal(goal_id)
         
         return {
             'success': True,
