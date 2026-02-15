@@ -219,7 +219,9 @@ def process_command(message, user_id):
                 reply_text = "I need a name for the goal."
             else:
                 # Use goal_create logic
+                logger.info(f"🎯 Creating goal: {name} (Auto-breakdown: True)")
                 result = create_goal(name, description=desc, due_date=due, auto_breakdown=True)
+                logger.info(f"✅ Goal creation result: {result.get('success')}")
                 if result.get('success'):
                     reply_text = f"✅ เป้าหมาย '{name}' ถูกสร้างแล้วค่ะ!\n\n📅 กำหนดส่ง: {due or 'ไม่ระบุ'}\n📝 โนว่าได้สร้าง Action Plan เบื้องต้นให้แล้วค่ะ"
                 else:
@@ -262,7 +264,9 @@ def process_command(message, user_id):
             if not query:
                 reply_text = "จะให้โนว่าช่วยค้นหาอะไรดีคะ? (เช่น ค้นหาเรื่องลูกค้า, ค้นหาไอเดีย)"
             else:
+                logger.info(f"🔍 Searching knowledge for: {query}")
                 search_results = search_knowledge(query)
+                logger.info("✅ Search complete")
                 
                 reply_text = f"🔍 ผลการค้นหาสำหรับ '{query}':\n"
                 found_anything = False
@@ -306,7 +310,9 @@ def process_command(message, user_id):
                     "content": content,
                     "category": category
                 }
+                logger.info(f"💾 Storing note: {title}")
                 result = store_knowledge(note_data)
+                logger.info(f"✅ Store result: {result['id'] if result else 'Failed'}")
                 if result:
                     reply_text = f"✅ บันทึกเรียบร้อยแล้วค่ะ! (ID: {result['id']})\n\n📂 หมวดหมู่: {category}\n📌 หัวข้อ: {title}"
                 else:

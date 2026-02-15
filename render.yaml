@@ -3,9 +3,9 @@ services:
     name: nova-ii-bot
     env: python
     region: singapore
-    plan: free
+    plan: starter
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn interface.app:app --bind 0.0.0.0:$PORT --timeout 120
+    startCommand: gunicorn interface.app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 180
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -24,7 +24,7 @@ services:
     name: nova-daily-reminder
     env: python
     region: singapore
-    plan: free
+    plan: starter
     schedule: "0 2 * * *"  # 9:00 AM UTC+7
     buildCommand: pip install -r requirements.txt
     startCommand: python execution/goal_reminders.py
