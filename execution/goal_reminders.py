@@ -39,7 +39,8 @@ load_dotenv()
 # SCOPES: Add Gmail Send scope
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/gmail.send'
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/calendar.events'
 ]
 DEFAULT_SHEET_ID = '194ZhTkYYog4qHGALr0qSYuX4iXvuypELRKoVz_--3DA'
 USER_ID_FILE = 'user_ids.json'
@@ -70,9 +71,11 @@ def get_credentials():
             except Exception as e:
                 print(f"❌ Error decoding GOOGLE_TOKEN_BASE64: {e}")
 
-    # 3. Fallback to local file
+    # 3. Fallback to local files
     if not creds:
-        if os.path.exists('token.pickle'):
+        if os.path.exists('token.json'):
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        elif os.path.exists('token.pickle'):
             with open('token.pickle', 'rb') as token:
                 creds = pickle.load(token)
     
@@ -95,8 +98,8 @@ def get_credentials():
         
         # Save to file locally if possible
         try:
-            with open('token.pickle', 'wb') as token:
-                pickle.dump(creds, token)
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
         except:
             pass
     

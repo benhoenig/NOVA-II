@@ -53,6 +53,17 @@
                 <div class="spinner"></div>Loading...
             </div>
         </div>
+
+        <!-- Upcoming Events -->
+        <div class="section-header">
+            <h2>📅 Upcoming Events</h2>
+            <span class="see-all" onclick="switchTab('chat')">Chat →</span>
+        </div>
+        <div id="home-calendar" class="calendar-list">
+            <div class="loading">
+                <div class="spinner"></div>Loading...
+            </div>
+        </div>
     </div>
 
     <!-- ═══ GOALS TAB ═══ -->
@@ -239,6 +250,52 @@
 
             const now = new Date();
             document.getElementById('set-last-update').textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ─── Load Calendar ───
+        async function loadCalendar() {
+            const container = document.getElementById('home-calendar');
+            const data = await fetchAPI('/api/calendar?days=7');
+
+            if (!data || !data.success || !data.events || data.events.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>ไม่มี events ในสัปดาห์นี้ค่ะ</p></div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            let currentDate = null;
+
+            data.events.forEach(event => {
+                const start = event.start;
+                let dateLabel, timeLabel;
+
+                if (event.all_day) {
+                    const dt = new Date(start + 'T00:00:00');
+                    dateLabel = dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+                    timeLabel = 'ทั้งวัน';
+                } else {
+                    const dt = new Date(start);
+                    dateLabel = dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+                    const endDt = new Date(event.end);
+                    timeLabel = dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' - ' + endDt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                }
+
+                if (dateLabel !== currentDate) {
+                    currentDate = dateLabel;
+                    container.innerHTML += `<div class="calendar-date-header">📆 ${dateLabel}</div>`;
+                }
+
+                const loc = event.location ? `<div class="calendar-location">📍 ${event.location}</div>` : '';
+                container.innerHTML += `
+                    <div class="calendar-event-card">
+                        <div class="calendar-event-time">${timeLabel}</div>
+                        <div class="calendar-event-info">
+                            <div class="calendar-event-title">${event.summary}</div>
+                            ${loc}
+                        </div>
+                    </div>
+                `;
+            });
         }
 
         // ─── Load Goals ───
@@ -537,7 +594,7 @@
 
         // ─── Refresh ───
         async function refreshData() {
-            await Promise.all([loadStats(), loadGoals('home-goals', true)]);
+            await Promise.all([loadStats(), loadGoals('home-goals', true), loadCalendar()]);
             if (currentTab === 'goals') await loadGoals('goals-list', false);
             if (currentTab === 'kb') await loadKB();
         }
@@ -546,6 +603,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadStats();
             loadGoals('home-goals', true);
+            loadCalendar();
         });
     </script>
 </body>

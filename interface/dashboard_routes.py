@@ -226,3 +226,19 @@ def api_chat_history():
         return jsonify({'success': True, 'messages': messages})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ─── Calendar API Endpoint ───────────────────────
+
+@dashboard.route('/api/calendar')
+@login_required
+def api_calendar():
+    """Get upcoming calendar events."""
+    from execution.google_calendar import list_events
+    
+    try:
+        days = int(request.args.get('days', 7))
+        events = list_events(days=days)
+        return jsonify({'success': True, 'events': events})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+

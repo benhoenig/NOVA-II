@@ -8,6 +8,7 @@ NOVA II is Ben's personal AI assistant that manages a knowledge base and goal tr
 2. Create and manage goals with progress tracking and AI-driven action plans
 3. Send automated email reminders (via Gmail API) to keep Ben focused
 4. Provide a reasoning-oriented "Second Brain" experience in Thai/English
+5. Manage Google Calendar (View, Create, Delete events)
 
 Database: Supabase (PostgreSQL)
 Interface: LINE Messaging API
@@ -76,6 +77,25 @@ Periodically (or when Ben asks):
 - Store in standardized format
 - Track last reminded time to avoid duplicates
 
+### 4. Google Calendar Management
+
+**Viewing Schedule:**
+- When Ben asks about schedule ("วันนี้มีอะไรบ้าง", "ตารางงาน"):
+- Call `execution/google_calendar.py list`
+- Show formatted list of upcoming events with time and location
+
+**Creating Events:**
+- When Ben wants to schedule ("จอง meeting", "นัดหมอ"):
+- Extract: Summary, Date, Start Time, End Time
+- If details missing, ask for clarification
+- Call `execution/google_calendar.py create`
+- Confirm with event link
+
+**Deleting Events:**
+- When Ben wants to cancel ("ยกเลิกนัด", "ลบ event"):
+- Search for event by name
+- Confirm deletion
+- Call `execution/google_calendar.py delete`
 ### 4. Persona & Protocol
 
 **Feminine Persona:**
@@ -108,6 +128,10 @@ Periodically (or when Ben asks):
 - **Update Type**: Status change, progress note, etc.
 - **New Value**: Updated information
 
+### 4. Calendar Operations
+- **View**: Number of days to look ahead (default 7)
+- **Create**: Event title, date, start/end time
+- **Delete**: Event name/keyword to search and delete
 ## Execution Scripts
 
 ### Active Scripts
@@ -115,6 +139,7 @@ Periodically (or when Ben asks):
 - `execution/supabase_db.py` - Core database interface functions.
 - `execution/goal_create.py` - Handles goal insertion and AI task breakdown.
 - `execution/goal_reminders.py` - Cron job for scanning goals and sending email reminders.
+- `execution/google_calendar.py` - Google Calendar CRUD operations.
 - `execution/llm_utils.py` - Unified LLM client for OpenAI and Anthropic.
 - `execution/kb_store.py` & `execution/kb_retrieve.py` - Knowledge management logic.
 - `execution/goal_utils.py` - Helper functions for goal/task fetching.

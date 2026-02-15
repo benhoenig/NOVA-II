@@ -231,6 +231,18 @@ def process_command(message, user_id):
           
         - UPDATE_TASK: User wants to change task status.
           Params: task_id or task_name, status
+
+        - VIEW_CALENDAR: User asks about schedule, what's coming up, calendar events.
+          Examples: "วันนี้มีอะไรบ้าง", "ตารางสัปดาห์นี้", "upcoming events"
+          Params: days (default 7, number of days ahead to look)
+          
+        - CREATE_EVENT: User wants to schedule/create a calendar event.
+          Examples: "จอง meeting พรุ่งนี้ บ่าย 2", "add event..."
+          Params: summary (event title), date (YYYY-MM-DD or 'วันนี้'/'พรุ่งนี้'), start_time (HH:MM), end_time (HH:MM), description (optional), location (optional)
+          
+        - DELETE_EVENT: User wants to cancel/remove a calendar event.
+          Examples: "ยกเลิกนัด meeting", "cancel the ABC event"
+          Params: event_name (search query to find the event)
           
         - CHAT: General conversation.
           Params: response (your helpful reply)
@@ -334,6 +346,53 @@ def process_command(message, user_id):
             new_status = params.get('status', 'Done')
             result = update_task(task_id, {"status": new_status})
             reply_text = f"✅ อัปเดตงาน '{task_id}' เป็น '{new_status}' แล้วค่ะ" if result else "❌ อัปเดตไม่สำเร็จค่ะ"
+
+        elif intent == 'VIEW_CALENDAR':
+            from execution.google_calendar import list_events, format_events_thai
+            days = int(params.get('days', 7))
+            events = list_events(days=days)
+            reply_text = format_events_thai(events)
+
+        elif intent == 'CREATE_EVENT':
+            from execution.google_calendar import create_event, parse_datetime_thai
+            summary = params.get('summary')
+            if not summary:
+                reply_text = "อยากสร้าง event อะไรดีคะ? บอกชื่อ, วันที่, และเวลาได้เลยค่ะ"
+            else:
+                date_str = params.get('date', 'วันนี้')
+                start_str = params.get('start_time', '09:00')
+                end_str = params.get('end_time', '10:00')
+                start_iso = parse_datetime_thai(date_str, start_str)
+                end_iso = parse_datetime_thai(date_str, end_str)
+                result = create_event(
+                    summary=summary,
+                    start_time=start_iso,
+                    end_time=end_iso,
+                    description=params.get('description'),
+                    location=params.get('location')
+                )
+                if result and result.get('success'):
+                    reply_text = f"✅ สร้าง event '{result['summary']}' เรียบร้อยแล้วค่ะ!\n📅 {result['start']} → {result['end']}\n🔗 {result.get('link', '')}"
+                else:
+                    reply_text = "❌ ไม่สามารถสร้าง event ได้ค่ะ กรุณาลองอีกครั้งนะคะ"
+
+        elif intent == 'DELETE_EVENT':
+            from execution.google_calendar import find_event_by_name, delete_event
+            event_name = params.get('event_name', '')
+            if not event_name:
+                reply_text = "❌ รบกวนบอกชื่อ event ที่ต้องการลบด้วยนะคะ"
+            else:
+                matches = find_event_by_name(event_name)
+                if not matches:
+                    reply_text = f"🔍 ไม่พบ event ที่ชื่อ '{event_name}' ค่ะ"
+                else:
+                    # Delete the first match
+                    target = matches[0]
+                    result = delete_event(target['id'])
+                    if result.get('success'):
+                        reply_text = f"✅ ลบ event '{target['summary']}' ({target['start']}) เรียบร้อยแล้วค่ะ"
+                    else:
+                        reply_text = f"❌ ลบ event ไม่สำเร็จค่ะ: {result.get('error')}"
 
         else: # CHAT
             reply_text = params.get('response', "รับทราบค่ะ!")
