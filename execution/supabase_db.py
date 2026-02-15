@@ -13,6 +13,15 @@ if not url or not key:
 
 supabase: Client = create_client(url or "https://placeholder.supabase.co", key or "placeholder")
 
+def parse_supabase_error(e):
+    """Parse common Supabase/PostgREST errors and return a user-friendly message or code."""
+    error_str = str(e)
+    if "PGRST204" in error_str:
+        return "SCHEMA_MISMATCH", "พบปัญหาโครงสร้างตารางไม่ตรงกับข้อมูล (Schema Mismatch) รบกวนกด 'Reload Schema' ในหน้า Supabase Dashboard ค่ะ"
+    if "PGRST200" in error_str:
+        return "TABLE_NOT_FOUND", "ไม่พบตารางที่ต้องการเข้าถึงในฐานข้อมูลค่ะ"
+    return "UNKNOWN_ERROR", error_str
+
 def get_active_goals():
     """Fetch all active goals from Supabase."""
     response = supabase.table("goals").select("*").eq("status", "Active").order("created_at", desc=True).execute()
@@ -84,9 +93,30 @@ def store_knowledge(data):
     return response.data[0] if response.data else None
 
 def create_tasks(tasks_data):
-    """Insert multiple tasks into Supabase."""
-    response = supabase.table("tasks").insert(tasks_data).execute()
-    return response.data
+    """Insert multiple tasks into Supabase with retry logic for schema issues."""
+    try:
+        response = supabase.table("tasks").insert(tasks_data).execute()
+        return response.data
+    except Exception as e:
+        err_code, msg = parse_supabase_error(e)
+        if err_code == "SCHEMA_MISMATCH":
+            print(f"⚠️ Schema mismatch detected. Attempting retry without optional columns...")
+            # Retry with minimal data (name and goal_id only)
+            minimal_tasks = []
+            for t in tasks_data:
+                minimal_tasks.append({
+                    "goal_id": t.get("goal_id"),
+                    "name": t.get("name"),
+                    "status": t.get("status", "Todo")
+                })
+            try:
+                response = supabase.table("tasks").insert(minimal_tasks).execute()
+                print("✅ Retry successful with minimal task data.")
+                return response.data
+            except Exception as e2:
+                print(f"❌ Retry also failed: {e2}")
+                raise e2
+        raise e
 
 def get_tasks_for_goal(goal_id):
     """Fetch tasks for a specific goal."""
@@ -132,9 +162,14 @@ def delete_task(task_id):
     return response.data
 
 def update_task(task_id, update_data):
-    """Update task fields (e.g., status, due_date)."""
-    response = supabase.table("tasks").update(update_data).eq("id", task_id).execute()
-    return response.data
+    """Update task fields (e.g., status, due_date) with basic error handling."""
+    try:
+        response = supabase.table("tasks").update(update_data).eq("id", task_id).execute()
+        return response.data
+    except Exception as e:
+        err_code, msg = parse_supabase_error(e)
+        print(f"❌ Error updating task: {msg}")
+        return None
 
 def get_goal_by_id(goal_id):
     """Fetch a specific goal by ID."""
