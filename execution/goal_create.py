@@ -46,14 +46,16 @@ def generate_breakdown(name, description, due_date):
     try:
         client = LLMClient()
         prompt = f"""
-        I have a goal: "{name}"
-        Description: {description}
-        Due Date: {due_date}
-        Current Date: {datetime.now().strftime('%Y-%m-%d')}
+        ฉันมีเป้าหมาย: "{name}"
+        รายละเอียด: {description}
+        กำหนดส่ง: {due_date}
+        วันที่ปัจจุบัน: {datetime.now().strftime('%Y-%m-%d')}
         
-        Please break this goal down into 3-7 concrete, actionable sub-tasks.
-        Return a JSON object with a key 'tasks' containing a list of strings.
-        Example task format: "Timeline: Task Description"
+        กรุณาแตกเป้าหมายนี้ออกเป็นขั้นตอนย่อย (sub-tasks) ที่ชัดเจนและทำได้จริง 3-7 รายการ
+        ตอบกลับเป็น JSON object ที่มี key 'tasks' ประกอบด้วย list ของ strings
+        
+        รูปแบบ task: "ระยะเวลา: รายละเอียดงาน" (เช่น "Day 1-2: ทำ market research")
+        **สำคัญ: ใช้ภาษาไทยทั้งหมด**
         """
         response = client.generate_json(prompt)
         return response.get('tasks', []) if response else []
