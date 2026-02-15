@@ -1,6 +1,9 @@
 import os
 from datetime import datetime
-from execution.supabase_db import get_active_goals as fetch_goals, get_all_active_tasks
+try:
+    from execution.supabase_db import get_active_goals as fetch_goals, get_all_active_tasks
+except ImportError:
+    from supabase_db import get_active_goals as fetch_goals, get_all_active_tasks
 
 def get_active_goals():
     """Fetch active goals from Supabase."""

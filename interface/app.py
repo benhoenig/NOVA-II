@@ -2,8 +2,10 @@ import os
 import sys
 import logging
 import json
+import threading
+import time
 from datetime import datetime
-from flask import Flask, request, abort
+from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
@@ -16,6 +18,9 @@ load_dotenv()
 
 # Load environment variables
 load_dotenv()
+
+# Add project root to sys.path to ensure execution modules are found
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Placeholder for LLMClient (will be imported lazily)
 LLMClient = None
@@ -31,6 +36,24 @@ handler = WebhookHandler(channel_secret or 'dummy')
 
 # Logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Warmup Thread
+def warmup_modules():
+    """Import heavy modules in background to speed up first request."""
+    logger.info("🧵 Background warmup started...")
+    try:
+        import pandas
+        import openai
+        import anthropic
+        from execution.llm_utils import LLMClient
+        from execution.supabase_db import get_active_goals
+        logger.info("✅ Background warmup complete.")
+    except Exception as e:
+        logger.warning(f"⚠️ Warmup partially failed: {e}")
+
+# Start warmup
+threading.Thread(target=warmup_modules, daemon=True).start()
 
 # Store User ID (Simple file-based storage for MVP)
 USER_ID_FILE = 'user_ids.json'
@@ -38,6 +61,11 @@ USER_ID_FILE = 'user_ids.json'
 @app.route("/")
 def index():
     return "NOVA II Bot is running!"
+
+@app.route("/health")
+def health():
+    """Explicit health check for Render."""
+    return jsonify({"status": "healthy", "timestamp": str(datetime.now())}), 200
 
 def save_user_id(user_id):
     """Save User ID for push messages."""
@@ -97,6 +125,8 @@ def process_command(message, user_id):
         return 'pong! NOVA II is online.'
         
     try:
+        logger.info(f"🤖 Starting AI Processing for message: {message[:20]}...")
+        start_time = time.time()
         client = ActualLLMClient()
         
         # 0. Save User Message immediately for context (Fail-safe)
@@ -333,6 +363,9 @@ def process_command(message, user_id):
         
         elif intent == 'CHAT':
             reply_text = params.get('response', "รับทราบค่ะ!")
+             
+        end_time = time.time()
+        logger.info(f"✅ AI Processing complete in {end_time - start_time:.2f}s")
              
         # 3. Save Assistant Response to History (Fail-safe)
         try:
