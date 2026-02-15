@@ -187,3 +187,42 @@ def api_kb():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ─── Chat API Endpoints ─────────────────────────
+
+@dashboard.route('/api/chat', methods=['POST'])
+@login_required
+def api_chat():
+    """Send a message to NOVA and get a response."""
+    from interface.app import process_command
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Invalid JSON'}), 400
+    
+    message = data.get('message', '').strip()
+    if not message:
+        return jsonify({'success': False, 'error': 'Empty message'}), 400
+    
+    try:
+        user_id = 'dashboard-user'
+        reply = process_command(message, user_id)
+        return jsonify({
+            'success': True,
+            'reply': reply,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@dashboard.route('/api/chat/history')
+@login_required
+def api_chat_history():
+    """Load chat history for dashboard user."""
+    from execution.supabase_db import get_chat_history
+    
+    try:
+        messages = get_chat_history('dashboard-user', limit=50)
+        return jsonify({'success': True, 'messages': messages})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

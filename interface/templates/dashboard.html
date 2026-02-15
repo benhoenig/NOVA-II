@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>NOVA II — Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/dashboard/static/dashboard.css">
 </head>
 
@@ -88,6 +89,37 @@
         </div>
     </div>
 
+    <!-- ═══ CHAT TAB ═══ -->
+    <div id="tab-chat" class="tab-content">
+        <div class="chat-container">
+            <div class="chat-header-bar">
+                <h2>💬 Chat with NOVA</h2>
+                <span class="chat-status" id="chat-status">Online</span>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="chat-welcome">
+                    <div class="chat-welcome-icon">🤖</div>
+                    <p>สวัสดีค่ะ! โนว่าพร้อมช่วยเหลือแล้วค่ะ</p>
+                    <span class="chat-welcome-hint">พิมพ์ข้อความด้านล่างเพื่อเริ่มแชทกับโนว่า</span>
+                </div>
+            </div>
+            <div class="typing-indicator" id="typing-indicator" style="display: none;">
+                <div class="typing-avatar">🤖</div>
+                <div class="typing-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <span class="typing-text">โนว่ากำลังคิด...</span>
+            </div>
+            <div class="chat-input-area">
+                <textarea id="chat-input" placeholder="พิมพ์ข้อความ..." rows="1"
+                    onkeydown="handleChatKey(event)"></textarea>
+                <button class="chat-send-btn" id="chat-send-btn" onclick="sendMessage()">
+                    <span>➤</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ═══ SETTINGS TAB ═══ -->
     <div id="tab-settings" class="tab-content">
         <div class="section-header">
@@ -132,6 +164,10 @@
             <span class="nav-icon">📝</span>
             <span class="nav-label">KB</span>
         </button>
+        <button class="nav-item" onclick="switchTab('chat')">
+            <span class="nav-icon">💬</span>
+            <span class="nav-label">Chat</span>
+        </button>
         <button class="nav-item" onclick="switchTab('settings')">
             <span class="nav-icon">⚙️</span>
             <span class="nav-label">Settings</span>
@@ -146,6 +182,8 @@
         let currentCategoryFilter = 'All';
         let searchTimeout = null;
 
+        let chatLoaded = false;
+
         // ─── Tab Switching ───
         function switchTab(tab) {
             currentTab = tab;
@@ -153,7 +191,8 @@
             document.getElementById(`tab-${tab}`).classList.add('active');
 
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-item')[['home', 'goals', 'kb', 'settings'].indexOf(tab)].classList.add('active');
+            const tabOrder = ['home', 'goals', 'kb', 'chat', 'settings'];
+            document.querySelectorAll('.nav-item')[tabOrder.indexOf(tab)].classList.add('active');
 
             // Load data on first visit
             if (tab === 'goals' && !document.getElementById('goals-list').querySelector('.goal-card')) {
@@ -161,6 +200,10 @@
             }
             if (tab === 'kb' && !document.getElementById('kb-list').querySelector('.kb-card')) {
                 loadKB();
+            }
+            if (tab === 'chat' && !chatLoaded) {
+                loadChatHistory();
+                chatLoaded = true;
             }
         }
 
@@ -351,6 +394,145 @@
             const div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
+        }
+
+        // ─── Chat Functions ───
+        async function loadChatHistory() {
+            const container = document.getElementById('chat-messages');
+            const data = await fetchAPI('/api/chat/history');
+            if (!data || !data.success || !data.messages || data.messages.length === 0) return;
+
+            // Clear welcome message
+            container.innerHTML = '';
+
+            // Messages come newest-first from API, reverse for chronological display
+            const messages = data.messages.reverse();
+            messages.forEach(msg => {
+                container.appendChild(createMessageBubble(msg.role, msg.message, msg.created_at));
+            });
+            scrollToBottom();
+        }
+
+        function createMessageBubble(role, text, timestamp) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `chat-bubble-wrapper ${role === 'user' ? 'user' : 'nova'}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${role === 'user' ? 'user' : 'nova'}`;
+            bubble.textContent = text;
+
+            const time = document.createElement('div');
+            time.className = 'chat-time';
+            time.textContent = timestamp ? formatChatTime(timestamp) : 'just now';
+
+            wrapper.appendChild(bubble);
+            wrapper.appendChild(time);
+            return wrapper;
+        }
+
+        function formatChatTime(dateStr) {
+            const d = new Date(dateStr);
+            const now = new Date();
+            const diffMs = now - d;
+            const diffMins = Math.floor(diffMs / 60000);
+
+            if (diffMins < 1) return 'ตอนนี้';
+            if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`;
+
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours} ชม.ที่แล้ว`;
+
+            return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const container = document.getElementById('chat-messages');
+            const sendBtn = document.getElementById('chat-send-btn');
+
+            // Clear welcome if present
+            const welcome = container.querySelector('.chat-welcome');
+            if (welcome) welcome.remove();
+
+            // Add user bubble
+            container.appendChild(createMessageBubble('user', message));
+            input.value = '';
+            autoResizeInput();
+            scrollToBottom();
+
+            // Show typing indicator
+            document.getElementById('typing-indicator').style.display = 'flex';
+            document.getElementById('chat-status').textContent = 'กำลังคิด...';
+            document.getElementById('chat-status').classList.add('thinking');
+            sendBtn.disabled = true;
+            input.disabled = true;
+            scrollToBottom();
+
+            // Send to API
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                if (res.status === 401 || res.status === 302) {
+                    window.location.href = '/dashboard/login';
+                    return;
+                }
+
+                const data = await res.json();
+
+                // Hide typing
+                document.getElementById('typing-indicator').style.display = 'none';
+                document.getElementById('chat-status').textContent = 'Online';
+                document.getElementById('chat-status').classList.remove('thinking');
+
+                if (data.success) {
+                    container.appendChild(createMessageBubble('assistant', data.reply, data.timestamp));
+                } else {
+                    container.appendChild(createMessageBubble('assistant', '❌ เกิดข้อผิดพลาดค่ะ: ' + (data.error || 'Unknown error')));
+                }
+            } catch (e) {
+                document.getElementById('typing-indicator').style.display = 'none';
+                document.getElementById('chat-status').textContent = 'Online';
+                document.getElementById('chat-status').classList.remove('thinking');
+                container.appendChild(createMessageBubble('assistant', '❌ ไม่สามารถเชื่อมต่อได้ค่ะ'));
+            } finally {
+                sendBtn.disabled = false;
+                input.disabled = false;
+                input.focus();
+                scrollToBottom();
+            }
+        }
+
+        function handleChatKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResizeInput() {
+            const input = document.getElementById('chat-input');
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+        }
+
+        // Auto-resize on input
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) chatInput.addEventListener('input', autoResizeInput);
+        });
+
+        function scrollToBottom() {
+            const container = document.getElementById('chat-messages');
+            requestAnimationFrame(() => {
+                container.scrollTop = container.scrollHeight;
+            });
         }
 
         // ─── Refresh ───
