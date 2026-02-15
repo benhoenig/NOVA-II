@@ -21,7 +21,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from execution.llm_utils import LLMClient
     from execution.goal_create import create_goal
-    from execution.supabase_db import save_chat_message, get_chat_history, delete_goal, search_knowledge, store_knowledge
+    from execution.supabase_db import (
+        save_chat_message, get_chat_history, delete_goal, 
+        search_knowledge, store_knowledge, delete_task, update_task, get_task_by_name_partial
+    )
     # Note: Other modules will be imported as needed or added here
 except ImportError as e:
     print(f"Error importing modules: {e}")
@@ -147,8 +150,19 @@ def process_command(message, user_id):
         - DELETE_GOAL: User wants to delete an existing goal by its ID or name.
           Params: goal_id (e.g., GOAL-001) or name
           
-        - CHAT: General conversation or other requests.
+        - DELETE_TASK: User wants to delete a specific task/action item.
+          Params: task_id or task_name
+          
+        - UPDATE_TASK: User wants to change task status (e.g. to 'Done', 'In Progress').
+          Params: task_id or task_name, status
+          
+        - CHAT: General conversation.
           Params: response (your helpful reply)
+          
+        SPECIAL PROTOCOL:
+        If Ben asks for a FEATURE or CAPABILITY that is NOT in the list above:
+        1. Set intent to 'CHAT'
+        2. Set response to: "ขออภัยครับ ตอนนี้ผมยังทำ [สิ่งที่ขอ] ไม่ได้ครับ จะให้ผมจด Note ประเด็นนี้ไว้ใน Knowledge Base (คลังบทเรียน) เพื่อเตรียมให้คุณ Ben แก้ไขปรับปรุงผมใน IDE ทีหลังไหมครับ?"
         
         Return a JSON object:
         {{
@@ -282,6 +296,44 @@ def process_command(message, user_id):
                     reply_text = f"🗑️ ลบเป้าหมาย '{id_to_delete}' เรียบร้อยแล้วครับ"
                 else:
                     reply_text = f"❌ ไม่พบเป้าหมาย ID '{id_to_delete}' ครับ"
+        
+        elif intent == 'DELETE_TASK':
+            task_id = params.get('task_id')
+            task_name = params.get('task_name')
+            
+            if not task_id and task_name:
+                # Try to find task_id by name
+                tasks = get_task_by_name_partial(task_name)
+                if tasks:
+                    task_id = tasks[0]['id']
+            
+            if not task_id:
+                reply_text = "รบกวนระบุ ID หรือชื่อของงานที่ต้องการลบด้วยครับ"
+            else:
+                result = delete_task(task_id)
+                if result:
+                    reply_text = f"🗑️ ลบงาน ID '{task_id}' เรียบร้อยแล้วครับ"
+                else:
+                    reply_text = f"❌ ไม่พบงาน ID '{task_id}' หรือเกิดข้อผิดพลาด"
+
+        elif intent == 'UPDATE_TASK':
+            task_id = params.get('task_id')
+            task_name = params.get('task_name')
+            new_status = params.get('status', 'Done')
+            
+            if not task_id and task_name:
+                tasks = get_task_by_name_partial(task_name)
+                if tasks:
+                    task_id = tasks[0]['id']
+            
+            if not task_id:
+                reply_text = "รบกวนระบุงานที่ต้องการอัปเดตสถานะครับ"
+            else:
+                result = update_task(task_id, {"status": new_status})
+                if result:
+                    reply_text = f"✅ อัปเดตงาน '{task_id}' เป็นสถานะ '{new_status}' เรียบร้อยแล้วครับ"
+                else:
+                    reply_text = f"❌ ไม่สามารถอัปเดตสถานะงานได้"
         
         elif intent == 'CHAT':
             reply_text = params.get('response', "รับทราบครับ!")

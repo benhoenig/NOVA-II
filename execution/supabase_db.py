@@ -27,6 +27,16 @@ def get_all_active_tasks():
         .execute()
     return response.data
 
+def get_task_by_name_partial(name_query):
+    """Find tasks by partial name match."""
+    response = supabase.table("tasks") \
+        .select("*, goals(name)") \
+        .ilike("name", f"%{name_query}%") \
+        .order("created_at", desc=True) \
+        .limit(5) \
+        .execute()
+    return response.data
+
 def search_knowledge(query):
     """Search for keywords across knowledge_base, goals, and business tables."""
     results = {}
@@ -114,4 +124,14 @@ def get_chat_history(user_id, limit=10):
 def delete_goal(goal_id):
     """Delete a goal and its associated tasks (managed by CASCADE)."""
     response = supabase.table("goals").delete().eq("id", goal_id).execute()
+    return response.data
+
+def delete_task(task_id):
+    """Delete a specific task by ID."""
+    response = supabase.table("tasks").delete().eq("id", task_id).execute()
+    return response.data
+
+def update_task(task_id, update_data):
+    """Update task fields (e.g., status, due_date)."""
+    response = supabase.table("tasks").update(update_data).eq("id", task_id).execute()
     return response.data
