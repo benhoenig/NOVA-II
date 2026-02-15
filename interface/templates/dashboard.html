@@ -70,6 +70,7 @@
     <div id="tab-goals" class="tab-content">
         <div class="section-header">
             <h2>🎯 Goals & Tasks</h2>
+            <button class="primary-btn" onclick="openGoalModal()">+ New Goal</button>
         </div>
         <div id="goals-list" class="goal-list">
             <div class="loading">
@@ -159,6 +160,45 @@
             </div>
         </div>
         <a href="/dashboard/logout" class="logout-btn">🚪 ออกจากระบบ</a>
+    </div>
+
+    <!-- ═══ MODALS ═══ -->
+    <div id="goal-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeGoalModal()">&times;</span>
+            <h2>🎯 New Goal</h2>
+            <form id="goal-form" onsubmit="submitGoal(event)">
+                <div class="form-group">
+                    <label>Goal Name</label>
+                    <input type="text" id="goal-name" required placeholder="e.g. Learn Python">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="goal-desc" rows="3" placeholder="Details..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" id="goal-due">
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="goal-priority">
+                            <option value="High">High</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="goal-auto">
+                    <label for="goal-auto">✨ AI Auto-Breakdown tasks</label>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="primary-btn">Create Goal</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Bottom Navigation -->
@@ -335,22 +375,25 @@
             const urgencyLabels = { normal: 'On Track', warning: 'Soon', urgent: 'Urgent', overdue: 'Overdue' };
 
             const tasksHTML = (goal.tasks || []).map(task => {
-                const statusClass = task.status === 'Done' ? 'done' : task.status === 'In Progress' ? 'in-progress' : 'todo';
-                const statusIcon = task.status === 'Done' ? '✓' : task.status === 'In Progress' ? '▶' : '';
-                const nameClass = task.status === 'Done' ? 'done' : '';
-                const dueText = task.due_date ? formatDate(task.due_date) : '';
+                const isDone = task.status === 'Done';
+                const statusClass = isDone ? 'done' : task.status === 'In Progress' ? 'in-progress' : 'todo';
 
                 return `<div class="task-item">
-                <div class="task-status-icon ${statusClass}">${statusIcon}</div>
-                <span class="task-name ${nameClass}">${escapeHTML(task.name)}</span>
-                ${dueText ? `<span class="task-due">${dueText}</span>` : ''}
+                <div class="task-checkbox ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '${task.status}')">
+                    ${isDone ? '✓' : ''}
+                </div>
+                <span class="task-name ${isDone ? 'done' : ''}">${escapeHTML(task.name)}</span>
+                <span class="task-delete" onclick="event.stopPropagation(); deleteTask('${task.id}')">×</span>
             </div>`;
             }).join('');
 
             return `<div class="goal-card" onclick="toggleGoal(this)">
             <div class="goal-header">
                 <span class="goal-name">${escapeHTML(goal.name)}</span>
-                <span class="urgency-badge ${urgencyClass}">${urgencyLabels[urgencyClass]}</span>
+                <div class="goal-actions">
+                     <span class="urgency-badge ${urgencyClass}">${urgencyLabels[urgencyClass]}</span>
+                     <div class="menu-dots" onclick="event.stopPropagation(); showGoalMenu(this, '${goal.id}')">⋮</div>
+                </div>
             </div>
             <div class="goal-meta">
                 ${goal.due_date ? `<span>📅 ${formatDate(goal.due_date)}</span>` : ''}
@@ -361,9 +404,14 @@
                 <div class="progress-fill" style="width: ${goal.progress}%"></div>
             </div>
             <div class="progress-text">${goal.tasks_done}/${goal.tasks_total} tasks completed · ${goal.progress}%</div>
-            ${goal.tasks && goal.tasks.length > 0 ? `
-                <div class="expand-indicator">▼ ดู tasks (${goal.tasks_total})</div>
-                <div class="task-list">${tasksHTML}</div>
+            
+            ${goal.tasks ? `
+                <div class="task-list">
+                    ${tasksHTML}
+                    <div class="quick-add-task" onclick="event.stopPropagation()">
+                        <input type="text" placeholder="+ Add task..." onkeydown="if(event.key==='Enter') addTask(this, '${goal.id}')">
+                    </div>
+                </div>
             ` : ''}
         </div>`;
         }
@@ -590,6 +638,124 @@
             requestAnimationFrame(() => {
                 container.scrollTop = container.scrollHeight;
             });
+        }
+
+        // ─── Interactive Functions ───
+
+        function openGoalModal() {
+            document.getElementById('goal-modal').style.display = 'flex';
+        }
+
+        function closeGoalModal() {
+            document.getElementById('goal-modal').style.display = 'none';
+        }
+
+        async function submitGoal(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.textContent;
+            btn.textContent = 'Creating...';
+            btn.disabled = true;
+
+            const payload = {
+                name: document.getElementById('goal-name').value,
+                description: document.getElementById('goal-desc').value,
+                due_date: document.getElementById('goal-due').value,
+                priority: document.getElementById('goal-priority').value,
+                auto_breakdown: document.getElementById('goal-auto').checked
+            };
+
+            try {
+                const res = await fetch('/api/goals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success || data.goal_id) {
+                    closeGoalModal();
+                    e.target.reset();
+                    refreshData();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Connection error');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function toggleTaskStatus(taskId, currentStatus) {
+            const newStatus = currentStatus === 'Done' ? 'Todo' : 'Done';
+            // Optimistic update would be good here, but for simplicity just waiting for API
+            try {
+                await fetch(`/api/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                // Reload specifically goals list to reflect progress
+                loadGoals('goals-list', false);
+                loadGoals('home-goals', true);
+                loadStats();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function addTask(input, goalId) {
+            const name = input.value.trim();
+            if (!name) return;
+
+            input.disabled = true;
+            try {
+                await fetch('/api/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ goal_id: goalId, name: name })
+                });
+                input.value = '';
+                refreshData();
+            } catch (e) {
+                alert('Failed to add task');
+            } finally {
+                input.disabled = false;
+                input.focus();
+            }
+        }
+
+        async function deleteGoal(goalId) {
+            if (!confirm('Are you sure you want to delete this goal?')) return;
+            try {
+                await fetch(`/api/goals/${goalId}`, { method: 'DELETE' });
+                refreshData();
+            } catch (e) {
+                alert('Failed to delete goal');
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if (!confirm('Delete this task?')) return;
+            try {
+                await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+                refreshData();
+            } catch (e) {
+                alert('Failed to delete task');
+            }
+        }
+
+        function showGoalMenu(icon, goalId) {
+            // Simple confirm for delete for now, strictly per requirements/plan
+            // Enhancing to full dropdown later if needed
+            // For now, let's just trigger delete or edit via simple prompt
+            // Or better: show a native confirm "Edit or Delete?" - actually standard generic delete is fine
+
+            // NOTE: For better UX, we'd use a custom dropdown. 
+            // For MVP speed: just confirm delete.
+            deleteGoal(goalId);
         }
 
         // ─── Refresh ───

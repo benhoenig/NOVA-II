@@ -154,6 +154,125 @@ def api_goals():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@dashboard.route('/api/goals', methods=['POST'])
+@login_required
+def create_goal():
+    """Create a new goal."""
+    from execution.goal_create import create_goal as logic_create_goal
+    
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        if not name:
+            return jsonify({'success': False, 'error': 'Goal name is required'}), 400
+            
+        result = logic_create_goal(
+            name=name,
+            description=data.get('description', ''),
+            due_date=data.get('due_date'),
+            goal_type=data.get('category', 'Personal'),
+            priority=data.get('priority', 'Medium'),
+            auto_breakdown=data.get('auto_breakdown', False)
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@dashboard.route('/api/goals/<goal_id>', methods=['PUT'])
+@login_required
+def update_goal_api(goal_id):
+    """Update an existing goal."""
+    from execution.supabase_db import update_goal
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            
+        # Filter allowed fields
+        allowed = ['name', 'description', 'due_date', 'status', 'priority', 'category']
+        updates = {k: v for k, v in data.items() if k in allowed}
+        
+        if not updates:
+            return jsonify({'success': False, 'error': 'No valid fields to update'}), 400
+            
+        result = update_goal(goal_id, updates)
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@dashboard.route('/api/goals/<goal_id>', methods=['DELETE'])
+@login_required
+def delete_goal_api(goal_id):
+    """Delete a goal and its tasks."""
+    from execution.supabase_db import delete_goal
+    
+    try:
+        result = delete_goal(goal_id)
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ─── Task API ───────────────────────────────────
+
+@dashboard.route('/api/tasks', methods=['POST'])
+@login_required
+def create_task_api():
+    """Add a new task to a goal."""
+    from execution.supabase_db import create_tasks
+    
+    try:
+        data = request.get_json()
+        goal_id = data.get('goal_id')
+        name = data.get('name')
+        
+        if not goal_id or not name:
+            return jsonify({'success': False, 'error': 'Goal ID and Name are required'}), 400
+            
+        task_data = [{
+            "goal_id": goal_id,
+            "name": name,
+            "status": "Todo",
+            "priority": "Medium"
+        }]
+        
+        result = create_tasks(task_data)
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@dashboard.route('/api/tasks/<task_id>', methods=['PUT'])
+@login_required
+def update_task_api(task_id):
+    """Update task status or details."""
+    from execution.supabase_db import update_task
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            
+        valid_statuses = ['Todo', 'In Progress', 'Done', 'Cancelled']
+        if 'status' in data and data['status'] not in valid_statuses:
+             return jsonify({'success': False, 'error': 'Invalid status'}), 400
+             
+        result = update_task(task_id, data)
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@dashboard.route('/api/tasks/<task_id>', methods=['DELETE'])
+@login_required
+def delete_task_api(task_id):
+    """Delete a task."""
+    from execution.supabase_db import delete_task
+    
+    try:
+        result = delete_task(task_id)
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @dashboard.route('/api/kb')
 @login_required
 def api_kb():
